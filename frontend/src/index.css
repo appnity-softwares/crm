@@ -1918,6 +1918,35 @@ tr:last-child td {
   .header {
     padding: 0 16px;
   }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .top-header {
+    padding: 0 16px 0 60px;
+    /* Leave space for mobile menu btn */
+  }
+
+  .data-table-container,
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  table {
+    min-width: 600px;
+    /* Prevent table text crowding */
+  }
+
+  .modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
 }
 
 /* ─── Command Palette (⌘K) ──────────────────────── */
@@ -2225,6 +2254,43 @@ tr:last-child td {
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .header-actions .btn-primary {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .header-search-container {
+    display: none;
+    /* Hide global search on tiny screens or replace with icon */
+  }
+
+  .top-header {
+    justify-content: flex-end;
+    /* Push items right if search is hidden */
+  }
+
+  .modal-content {
+    padding: 16px !important;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* Adjust typography for mobile iOS/Android */
+  html {
+    font-size: 13px;
+  }
+
+  .page-content {
+    padding: 12px;
   }
 }
 
