@@ -50,6 +50,12 @@ func GetAllDailyReports(c *gin.Context) {
 	if date := c.Query("date"); date != "" {
 		query = query.Where("date = ?", date)
 	}
+	if from := c.Query("from"); from != "" {
+		query = query.Where("date >= ?", from)
+	}
+	if to := c.Query("to"); to != "" {
+		query = query.Where("date <= ?", to)
+	}
 
 	if err := query.Order("created_at DESC").Find(&reports).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch reports"})
@@ -74,4 +80,41 @@ func GetMyDailyReports(c *gin.Context) {
 func GetDailyReportStats(c *gin.Context) {
 	// Simple count for total submitted logic if required
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func ReviewDailyReport(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid report ID"})
+		return
+	}
+
+	var req struct {
+		Status      string `json:"status" binding:"required,oneof=approved rejected"`
+		AdminRemark string `json:"admin_remark"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var report models.DailyReport
+	if err := database.DB.First(&report, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		return
+	}
+
+	report.Status = req.Status
+	report.AdminRemark = req.AdminRemark
+
+	if err := database.DB.Save(&report).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update report"})
+		return
+	}
+
+	// Notify user
+	CreateNotification(report.UserID, "info", "Daily Report Reviewed", "Your report for "+report.Date+" has been "+req.Status)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Report reviewed successfully", "report": report})
 }

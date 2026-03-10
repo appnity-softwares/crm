@@ -17,6 +17,10 @@ type Lead struct {
 	Status     string         `gorm:"size:50;not null;default:'new'" json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
 	AssignedTo *uuid.UUID     `gorm:"type:uuid;index" json:"assigned_to"`
 	Assignee   *User          `gorm:"foreignKey:AssignedTo" json:"assignee,omitempty"`
+	AddedByID  uuid.UUID      `gorm:"type:uuid;index" json:"added_by_id"`
+	AddedBy    *User          `gorm:"foreignKey:AddedByID" json:"added_by,omitempty"`
+	UserID     *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
+	User       *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Notes      string         `gorm:"type:text" json:"notes"`
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`

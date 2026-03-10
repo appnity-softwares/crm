@@ -20,10 +20,13 @@ export default function Leads() {
     const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '' });
     const [saving, setSaving] = useState(false);
 
-    const load = async () => {
+    const load = async (params = {}) => {
         setLoading(true);
         try {
-            const [leadRes, empRes] = await Promise.all([leadAPI.getAll(), employeeAPI.getAll().catch(() => ({ data: { employees: [] } }))]);
+            const [leadRes, empRes] = await Promise.all([
+                leadAPI.getAll(params),
+                employeeAPI.getAll().catch(() => ({ data: { employees: [] } }))
+            ]);
             setLeads(leadRes.data.leads || []);
             setEmployees(empRes.data.employees || []);
         } catch { } finally { setLoading(false); }
@@ -83,6 +86,17 @@ export default function Leads() {
         } catch { toast('Failed', 'error'); }
     };
 
+    const handleConvert = async (lead) => {
+        if (!window.confirm(`Convert ${lead.name} to Client? This will create a project.`)) return;
+        try {
+            await leadAPI.convertToClient(lead.id);
+            toast('Lead successfully converted to Client!', 'success');
+            load();
+        } catch (err) {
+            toast(err.response?.data?.error || 'Failed to convert lead', 'error');
+        }
+    };
+
     const columns = [
         { header: 'Name', accessor: 'name', render: r => <span style={{ fontWeight: 600 }}>{r.name}</span> },
         { header: 'Company', accessor: 'company', render: r => r.company || '—' },
@@ -96,15 +110,9 @@ export default function Leads() {
                 return <span className={`badge ${map[r.source] || 'gray'}`}>{r.source}</span>;
             }
         },
-        {
-            header: 'Status',
-            accessor: 'status',
-            render: (r) => {
-                const map = { new: 'blue', contacted: 'amber', qualified: 'purple', proposal: 'cyan', won: 'green', lost: 'red' };
-                return <span className={`badge ${map[r.status] || 'gray'}`}>{r.status}</span>;
-            }
-        },
-        { header: 'Assigned To', accessor: r => r.assignee?.name || '—' },
+        { header: 'Status', accessor: 'status', render: r => <span className={`badge ${r.status === 'won' ? 'green' : r.status === 'lost' ? 'red' : 'blue'}`}>{r.status}</span> },
+        { header: 'Assigned To', accessor: r => r.assignee?.name || '—', render: r => <span style={{ color: 'var(--primary-600)', fontWeight: 500 }}>{r.assignee?.name || '—'}</span> },
+        { header: 'Added By', accessor: r => r.added_by?.name || '—', render: r => <span style={{ fontSize: '0.85rem' }}>{r.added_by?.name || '—'}</span> },
         {
             header: 'Actions',
             key: 'actions',
@@ -113,6 +121,11 @@ export default function Leads() {
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(l)}>
                         <Edit2 size={12} />
                     </button>
+                    {l.user_id && l.status !== 'won' && (
+                        <button className="btn btn-sm btn-primary" onClick={() => handleConvert(l)} title="Convert to Client">
+                            <UserPlus size={12} /> Convert
+                        </button>
+                    )}
                     {isAdmin && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(l.id)}>×</button>}
                 </div>
             )
@@ -134,6 +147,17 @@ export default function Leads() {
             </div>
 
             <div className="page-content">
+                <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Filter by Employee (Assignee)</label>
+                            <select className="form-control" onChange={e => load({ assigned_to: e.target.value })}>
+                                <option value="">All Employees</option>
+                                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
                 <div className="card">
                     {loading ? <div className="spinner" /> : (
                         <DataTable

@@ -56,12 +56,35 @@ export default function DailyReports() {
     const [notes, setNotes] = useState('');
     const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
 
+    // Review state
+    const [reviewing, setReviewing] = useState(null);
+    const [reviewForm, setReviewForm] = useState({ status: 'approved', admin_remark: '' });
+
+    // Filters
+    const [filterDate, setFilterDate] = useState('');
+    const [filterMonth, setFilterMonth] = useState('');
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+
     const loadReports = async () => {
         setLoading(true);
+        const params = {};
+        if (filterDate) {
+            params.from = filterDate;
+            params.to = filterDate;
+        } else if (filterMonth && filterYear) {
+            const firstDay = `${filterYear}-${filterMonth.padStart(2, '0')}-01`;
+            const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+            params.from = firstDay;
+            params.to = `${filterYear}-${filterMonth.padStart(2, '0')}-${lastDay}`;
+        } else if (filterYear) {
+            params.from = `${filterYear}-01-01`;
+            params.to = `${filterYear}-12-31`;
+        }
+
         try {
             const { data } = hasElevated
-                ? await dailyReportsAPI.getAll()
-                : await dailyReportsAPI.getMine();
+                ? await dailyReportsAPI.getAll(params)
+                : await dailyReportsAPI.getMine(params);
             setReports(data.reports || []);
         } catch (err) {
             console.error('Failed to load reports');
@@ -70,7 +93,7 @@ export default function DailyReports() {
         }
     };
 
-    useEffect(() => { loadReports(); }, []);
+    useEffect(() => { loadReports(); }, [filterDate, filterMonth, filterYear]);
 
     const handleFieldChange = (key, val) => {
         setFormData(prev => ({ ...prev, [key]: val }));
@@ -121,6 +144,20 @@ export default function DailyReports() {
         setShowForm(true);
     };
 
+    const handleReview = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            await dailyReportsAPI.review(reviewing.id, reviewForm);
+            toast('Report Reviewed!', 'success');
+            setReviewing(null);
+            setReviewForm({ status: 'approved', admin_remark: '' });
+            loadReports();
+        } catch (err) {
+            toast(err.response?.data?.error || 'Review failed', 'error');
+        } finally { setSubmitting(false); }
+    };
+
     const parseMetrics = (metricsString) => {
         try { return JSON.parse(metricsString); } catch { return {}; }
     };
@@ -149,7 +186,17 @@ export default function DailyReports() {
             }
         },
         { header: 'Notes', accessor: 'notes', render: r => <span style={{ fontSize: '0.85rem' }}>{r.notes || '—'}</span> },
-        { header: 'Status', accessor: 'status', render: r => <span className="badge green"><CheckCircle size={10} style={{ marginRight: 4 }} />{r.status}</span> }
+        {
+            header: 'Status',
+            accessor: 'status',
+            render: r => (
+                <span className={`badge ${r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'blue'}`}>
+                    {r.status === 'approved' && <CheckCircle size={10} style={{ marginRight: 4 }} />}
+                    {r.status}
+                </span>
+            )
+        },
+        { header: 'Admin Remark', accessor: 'admin_remark', render: r => <span style={{ fontSize: '0.85rem', color: 'var(--primary-600)' }}>{r.admin_remark || '—'}</span> }
     ];
 
     if (isAdmin) {
@@ -157,9 +204,16 @@ export default function DailyReports() {
             header: 'Actions',
             key: 'actions',
             render: (r) => (
-                <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(r)}>
-                    <Edit2 size={12} />
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(r)} title="Edit">
+                        <Edit2 size={12} />
+                    </button>
+                    {r.status === 'submitted' && (
+                        <button className="btn btn-sm btn-primary" onClick={() => { setReviewing(r); setReviewForm({ status: 'approved', admin_remark: '' }); }} title="Review">
+                            <CheckCircle size={12} />
+                        </button>
+                    )}
+                </div>
             )
         });
     }
@@ -181,6 +235,36 @@ export default function DailyReports() {
             </div>
 
             <div className="page-content">
+                {/* Advanced Filters */}
+                <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Filter by Year</label>
+                            <select className="form-control" value={filterYear} onChange={e => { setFilterYear(e.target.value); setFilterDate(''); }}>
+                                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Filter by Month</label>
+                            <select className="form-control" value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setFilterDate(''); }}>
+                                <option value="">All Months</option>
+                                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                                    <option key={m} value={i + 1}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Specific Date</label>
+                            <div style={{ position: 'relative' }}>
+                                <input type="date" className="form-control" value={filterDate} onChange={e => { setFilterDate(e.target.value); setFilterMonth(''); }} />
+                            </div>
+                        </div>
+                        <button className="btn btn-secondary" onClick={() => { setFilterDate(''); setFilterMonth(''); setFilterYear(new Date().getFullYear().toString()); }}>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
                 {showForm && (
                     <div className="card" style={{ marginBottom: 30 }}>
                         <h3 style={{ marginBottom: 15 }}>{editing ? 'Edit KPI Report' : "Submit Today's KPI"}</h3>
@@ -261,6 +345,40 @@ export default function DailyReports() {
                     )}
                 </div>
             </div>
+
+            {reviewing && (
+                <Modal title="Review Daily Report" onClose={() => setReviewing(null)}>
+                    <form onSubmit={handleReview}>
+                        <div className="form-group" style={{ marginBottom: 20 }}>
+                            <label>Status</label>
+                            <select
+                                className="form-control"
+                                value={reviewForm.status}
+                                onChange={e => setReviewForm({ ...reviewForm, status: e.target.value })}
+                            >
+                                <option value="approved">Approve</option>
+                                <option value="rejected">Reject</option>
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 24 }}>
+                            <label>Admin Remark (Visible to employee)</label>
+                            <textarea
+                                className="form-control"
+                                rows="4"
+                                value={reviewForm.admin_remark}
+                                onChange={e => setReviewForm({ ...reviewForm, admin_remark: e.target.value })}
+                                placeholder="Add your feedback or remarks here..."
+                            />
+                        </div>
+                        <div className="form-actions">
+                            <button type="button" className="btn btn-secondary" onClick={() => setReviewing(null)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary" disabled={submitting}>
+                                {submitting ? 'Processing...' : 'Submit Review'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
         </div>
     );
 }

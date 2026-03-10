@@ -10,10 +10,21 @@ func SetupRoutes(r *gin.Engine) {
 	// ─── Public routes ───────────────────────────────────────────
 	api := r.Group("/api")
 	{
-		auth := api.Group("/auth")
+		public := api.Group("/auth")
 		{
-			auth.POST("/login", handlers.Login)
-			auth.POST("/refresh", handlers.RefreshToken)
+			public.POST("/login", handlers.Login)
+			public.POST("/register", handlers.Register)
+			public.POST("/refresh", handlers.RefreshToken)
+		}
+
+		// ─── Portal (Public) ───
+		portal := api.Group("/portal")
+		{
+			portal.GET("/:token", handlers.GetPortalData)
+			portal.POST("/:token/pay", handlers.InitializePayment)
+			portal.POST("/:token/verify", handlers.VerifyPayment)
+			portal.POST("/:token/tickets", handlers.CreateTicket) // Publicly reachable via token logic in handler would be better, but for now direct is ok as it takes projectID
+			portal.GET("/:token/tickets", handlers.GetProjectTickets)
 		}
 	}
 
@@ -23,6 +34,7 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		// Profile & Dashboard
 		protected.GET("/profile", handlers.GetProfile)
+		protected.PUT("/profile", handlers.UpdateProfile)
 		protected.GET("/dashboard/stats", handlers.GetDashboardStats)
 
 		// ── Employees (admin-controlled) ──
@@ -67,6 +79,7 @@ func SetupRoutes(r *gin.Engine) {
 			reports.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllDailyReports)
 			reports.GET("/me", handlers.GetMyDailyReports)
 			reports.GET("/stats", middleware.RoleGuard("admin", "manager"), handlers.GetDailyReportStats)
+			reports.PUT("/:id/review", middleware.RoleGuard("admin"), handlers.ReviewDailyReport)
 		}
 
 		// ── Projects ──
@@ -75,10 +88,17 @@ func SetupRoutes(r *gin.Engine) {
 			projects.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateProject)
 			projects.GET("", handlers.GetProjects)
 			projects.GET("/:id", handlers.GetProject)
-			projects.PUT("/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateProject)
+			projects.PUT("/:id", handlers.UpdateProject)
 			projects.POST("/:id/assign", middleware.RoleGuard("admin", "manager"), handlers.AssignMember)
 			projects.POST("/:id/transfer", middleware.RoleGuard("admin", "manager"), handlers.TransferMember)
+			projects.PUT("/:id/approve", middleware.RoleGuard("admin", "manager"), handlers.ApproveProjectUpdate)
 			projects.DELETE("/:id/members/:uid", middleware.RoleGuard("admin", "manager"), handlers.RemoveMember)
+
+			// Tasks
+			projects.GET("/:id/tasks", handlers.GetProjectTasks)
+			projects.POST("/tasks", handlers.CreateTask)
+			projects.PUT("/tasks/:id", handlers.UpdateTask)
+			projects.DELETE("/tasks/:id", handlers.DeleteTask)
 		}
 
 		// ── Payroll ──
@@ -98,16 +118,31 @@ func SetupRoutes(r *gin.Engine) {
 			invoices.GET("/:id", middleware.RoleGuard("admin", "manager"), handlers.GetInvoice)
 			invoices.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateInvoice)
 			invoices.PUT("/:id/status", middleware.RoleGuard("admin"), handlers.UpdateInvoiceStatus)
+			invoices.POST("/:id/remind", middleware.RoleGuard("admin"), handlers.SendInvoiceReminder)
 		}
 
 		// ── Leads (CRM) ──
 		leads := protected.Group("/leads")
 		{
+			// Admin/Manager tools
 			leads.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateLead)
-			leads.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetLeads)
-			leads.GET("/:id", middleware.RoleGuard("admin", "manager"), handlers.GetLead)
+			leads.GET("", handlers.GetLeads)
+			leads.GET("/:id", handlers.GetLead)
 			leads.PUT("/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateLead)
 			leads.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteLead)
+			leads.POST("/:id/convert", middleware.RoleGuard("admin", "manager"), handlers.ConvertLeadToClient)
+
+			// Prospect tools
+			leads.POST("/requirement", middleware.RoleGuard("prospect"), handlers.SubmitRequirement)
+		}
+
+		// ── Expenses ──
+		expenses := protected.Group("/expenses")
+		{
+			expenses.POST("", middleware.RoleGuard("admin"), handlers.CreateExpense)
+			expenses.GET("", middleware.RoleGuard("admin"), handlers.GetAllExpenses)
+			expenses.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateExpense)
+			expenses.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteExpense)
 		}
 
 		// ── Configs & Flags (admin) ──
@@ -117,6 +152,37 @@ func SetupRoutes(r *gin.Engine) {
 			configs.PATCH("/flags/:key", middleware.RoleGuard("admin"), handlers.ToggleFeatureFlagEx)
 		}
 
+		// ── Finance (Balance) ──
+		finance := protected.Group("/finance")
+		{
+			finance.GET("/balance", handlers.GetBalance)
+			finance.GET("/stats", middleware.RoleGuard("admin"), handlers.GetFinanceStats)
+			finance.POST("/balance/manual", middleware.RoleGuard("admin"), handlers.UpdateBalanceManual)
+		}
+
+		// ── Tickets ──
+		tickets := protected.Group("/tickets")
+		{
+			tickets.GET("", handlers.GetAllTickets)
+			tickets.PUT("/:id/status", handlers.UpdateTicketStatus)
+		}
+
+		// ── Notices ──
+		notices := protected.Group("/notices")
+		{
+			notices.GET("", handlers.GetNotices)
+			notices.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateNotice)
+			notices.DELETE("/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteNotice)
+		}
+
+		// ── Chat ──
+		chat := protected.Group("/chat")
+		{
+			chat.GET("/conversations", handlers.GetConversations)
+			chat.GET("/history/:otherID", handlers.GetChatHistory)
+			chat.POST("/send", handlers.SendMessage)
+		}
+
 		// ── Notifications ──
 		notifications := protected.Group("/notifications")
 		{
@@ -124,6 +190,15 @@ func SetupRoutes(r *gin.Engine) {
 			notifications.PUT("/:id/read", handlers.MarkNotificationRead)
 			notifications.PUT("/read-all", handlers.MarkAllNotificationsRead)
 			notifications.DELETE("/:id", handlers.DeleteNotification)
+		}
+
+		// ── Leaves ──
+		leaves := protected.Group("/leaves")
+		{
+			leaves.POST("", handlers.ApplyLeave)
+			leaves.GET("/me", handlers.GetMyLeaves)
+			leaves.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllLeaves)
+			leaves.PUT("/:id/review", middleware.RoleGuard("admin", "manager"), handlers.ReviewLeave)
 		}
 	}
 }

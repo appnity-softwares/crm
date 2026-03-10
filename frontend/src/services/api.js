@@ -40,9 +40,10 @@ api.interceptors.response.use(
 
 // ── Auth ──
 export const authAPI = {
-    login: (data) => api.post('/auth/login', data),
-    refresh: (token) => api.post('/auth/refresh', { refresh_token: token }),
+    login: (credentials) => api.post('/auth/login', credentials),
+    register: (data) => api.post('/auth/register', data),
     getProfile: () => api.get('/profile'),
+    refreshToken: (token) => api.post('/auth/refresh', { refresh_token: token }),
 };
 
 // ── Employees ──
@@ -83,6 +84,7 @@ export const dailyReportsAPI = {
     getAll: (params) => api.get('/reports', { params }),
     getMine: (params) => api.get('/reports/me', { params }),
     getStats: () => api.get('/reports/stats'),
+    review: (id, data) => api.put(`/reports/${id}/review`, data),
 };
 
 // ── Projects ──
@@ -91,8 +93,9 @@ export const projectAPI = {
     getAll: (params) => api.get('/projects', { params }),
     getOne: (id) => api.get(`/projects/${id}`),
     update: (id, data) => api.put(`/projects/${id}`, data),
-    assign: (id, data) => api.post(`/projects/${id}/assign`, data),
-    transfer: (id, data) => api.post(`/projects/${id}/transfer`, data),
+    assignMember: (id, data) => api.post(`/projects/${id}/assign`, data),
+    transferMember: (id, data) => api.post(`/projects/${id}/transfer`, data),
+    approveUpdate: (id, data) => api.put(`/projects/${id}/approve`, data),
     removeMember: (id, uid) => api.delete(`/projects/${id}/members/${uid}`),
 };
 
@@ -110,7 +113,9 @@ export const invoiceAPI = {
     getAll: (params) => api.get('/invoices', { params }),
     getOne: (id) => api.get(`/invoices/${id}`),
     update: (id, data) => api.put(`/invoices/${id}`, data),
+    updateInvoice: (id, data) => api.put(`/invoices/${id}`, data),
     updateStatus: (id, data) => api.put(`/invoices/${id}/status`, data),
+    remind: (id) => api.post(`/invoices/${id}/remind`),
 };
 
 // ── Leads ──
@@ -120,6 +125,8 @@ export const leadAPI = {
     getOne: (id) => api.get(`/leads/${id}`),
     update: (id, data) => api.put(`/leads/${id}`, data),
     remove: (id) => api.delete(`/leads/${id}`),
+    submitRequirement: (data) => api.post('/leads/requirement', data),
+    convertToClient: (id) => api.post(`/leads/${id}/convert`)
 };
 
 // ── Dashboard ──
@@ -141,5 +148,61 @@ export const notificationAPI = {
     remove: (id) => api.delete(`/notifications/${id}`),
 };
 
-export default api;
+// ── Expenses ──
+export const expenseAPI = {
+    create: (data) => api.post('/expenses', data),
+    getAll: (params) => api.get('/expenses', { params }),
+    update: (id, data) => api.put(`/expenses/${id}`, data),
+    remove: (id) => api.delete(`/expenses/${id}`),
+};
 
+export const balanceAPI = {
+    get: () => api.get('/finance/balance'),
+    getStats: () => api.get('/finance/stats'),
+    updateManual: (data) => api.post('/finance/balance/manual', data),
+};
+
+export const userAPI = {
+    updateProfile: (data) => api.put('/profile', data),
+};
+
+export const portalAPI = {
+    getData: (token) => api.get(`/portal/${token}`),
+    initializePayment: (token) => api.post(`/portal/${token}/pay`),
+    verifyPayment: (token, data) => api.post(`/portal/${token}/verify`, data),
+    createTicket: (token, data) => api.post(`/portal/${token}/tickets`, data),
+    getTickets: (token) => api.get(`/portal/${token}/tickets`),
+};
+
+export const ticketAPI = {
+    getAll: () => api.get('/tickets'),
+    updateStatus: (id, status) => api.put(`/tickets/${id}/status`, { status }),
+};
+
+export const leaveAPI = {
+    apply: (data) => api.post('/leaves', data),
+    getMyLeaves: () => api.get('/leaves/me'),
+    getAll: (params) => api.get('/leaves', { params }),
+    review: (id, data) => api.put(`/leaves/${id}/review`, data),
+};
+
+export const noticeAPI = {
+    getAll: () => api.get('/notices'),
+    create: (data) => api.post('/notices', data),
+    remove: (id) => api.delete(`/notices/${id}`),
+};
+
+export const chatAPI = {
+    getConversations: () => api.get('/chat/conversations'),
+    getHistory: (uid) => api.get(`/chat/history/${uid}`),
+    send: (data) => api.post('/chat/send', data),
+};
+
+export const taskAPI = {
+    getByProject: (pid) => api.get(`/projects/${pid}/tasks`),
+    create: (data) => api.post('/projects/tasks', data),
+    update: (id, data) => api.put(`/projects/tasks/${id}`, data),
+    remove: (id) => api.delete(`/projects/tasks/${id}`),
+};
+
+export { api, dailyReportsAPI as reportAPI, balanceAPI as financeAPI };

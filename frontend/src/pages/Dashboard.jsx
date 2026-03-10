@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { dashboardAPI } from '../services/api';
-import { Clock, FolderKanban, DollarSign, Activity, TrendingUp, Target, Users, Briefcase, FileText, UserPlus } from 'lucide-react';
+import { dashboardAPI, balanceAPI, noticeAPI } from '../services/api';
+import { Clock, FolderKanban, DollarSign, Activity, TrendingUp, Target, Users, Briefcase, FileText, UserPlus, Wallet, Plus, IndianRupee, Bell, Megaphone, Trash2 } from 'lucide-react';
 import { CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Legend, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
 import { useApi } from '../hooks/useApi';
+import Modal from '../components/ui/Modal';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -13,6 +14,52 @@ export default function Dashboard() {
     const { dark } = useTheme();
 
     const { data: statsData, loading: statsLoading } = useApi(dashboardAPI.getStats);
+    const { data: balanceData, loading: balanceLoading, refresh: refreshBalance } = useApi(balanceAPI.get);
+    const { data: noticeData, refresh: refreshNotices } = useApi(noticeAPI.getAll);
+
+    const [showBalanceModal, setShowBalanceModal] = useState(false);
+    const [balanceInput, setBalanceInput] = useState({ amount: '', notes: '' });
+    const [updatingBalance, setUpdatingBalance] = useState(false);
+    const [showNoticeModal, setShowNoticeModal] = useState(false);
+    const [noticeForm, setNoticeForm] = useState({ title: '', content: '', type: 'general' });
+    const [savingNotice, setSavingNotice] = useState(false);
+
+    const handleUpdateBalance = async (e) => {
+        e.preventDefault();
+        setUpdatingBalance(true);
+        try {
+            await balanceAPI.updateManual({
+                amount: parseFloat(balanceInput.amount),
+                notes: balanceInput.notes
+            });
+            refreshBalance();
+            setShowBalanceModal(false);
+            setBalanceInput({ amount: '', notes: '' });
+        } catch (err) {
+            console.error("Failed to update balance", err);
+        } finally {
+            setUpdatingBalance(false);
+        }
+    };
+
+    const handleCreateNotice = async (e) => {
+        e.preventDefault();
+        setSavingNotice(true);
+        try {
+            await noticeAPI.create(noticeForm);
+            refreshNotices();
+            setShowNoticeModal(false);
+            setNoticeForm({ title: '', content: '', type: 'general' });
+        } catch { } finally { setSavingNotice(false); }
+    };
+
+    const handleDeleteNotice = async (id) => {
+        if (!window.confirm("Delete this notice?")) return;
+        try {
+            await noticeAPI.remove(id);
+            refreshNotices();
+        } catch { }
+    };
 
     const metrics = {
         employees: hasElevated ? (statsData?.employees || 0) : '-',
@@ -47,14 +94,33 @@ export default function Dashboard() {
 
     return (
         <div className="page-content">
-            <div className="header" style={{ marginBottom: 32, padding: 0, border: 'none', background: 'transparent' }}>
-                <div className="header-left">
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{greeting()}, {user?.name?.split(' ')[0]} 👋</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Overview of your management workspace and team performance.</p>
+            <div className="dashboard-header">
+                <div className="dashboard-header-left">
+                    <h1>{greeting()}, {user?.name?.split(' ')[0]} 👋</h1>
+                    <p>Overview of your management workspace and team performance.</p>
                 </div>
             </div>
 
-            <div className="stats-grid" style={{ marginBottom: 32 }}>
+            <div className="stats-grid">
+                {hasElevated && (
+                    <div className="stat-card" style={{ border: '2px solid var(--primary-100)', background: 'var(--primary-50)' }}>
+                        <div className="stat-icon primary"><Wallet size={20} /></div>
+                        <div className="stat-info">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h4>Total Balance</h4>
+                                {user?.role === 'admin' && (
+                                    <button onClick={() => setShowBalanceModal(true)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
+                                        <Plus size={16} />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="stat-value" style={{ color: 'var(--primary-700)' }}>
+                                ₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}
+                            </div>
+                            <div className="stat-sub">Available Funds</div>
+                        </div>
+                    </div>
+                )}
                 {hasElevated && (
                     <div className="stat-card">
                         <div className="stat-icon blue"><Users size={20} /></div>
@@ -93,34 +159,72 @@ export default function Dashboard() {
                 )}
             </div>
 
-            <div className="card" style={{ marginBottom: 32 }}>
-                <div className="card-header">
-                    <h3><DollarSign size={16} /> Revenue Growth Trend</h3>
+            <div className="dashboard-grid-2-1" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 24, marginBottom: 30 }}>
+                <div className="card revenue-card" style={{ marginBottom: 0 }}>
+                    <div className="card-header">
+                        <h3><DollarSign size={16} /> Revenue Growth Trend</h3>
+                    </div>
+                    <div className="card-body">
+                        <div style={{ width: '100%', height: 320 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={revenueData}>
+                                    <defs>
+                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => '₹' + v} />
+                                    <Tooltip
+                                        contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
+                                    />
+                                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
                 </div>
-                <div className="card-body">
-                    <div style={{ width: '100%', height: 320 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={revenueData}>
-                                <defs>
-                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => '₹' + v} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
-                                />
-                                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+
+                <div className="card notice-card" style={{ height: 'fit-content' }}>
+                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Megaphone size={16} color="var(--amber-500)" /> Notice Board</h3>
+                        {hasElevated && (
+                            <button className="btn btn-sm btn-secondary" onClick={() => setShowNoticeModal(true)} style={{ padding: '4px 8px' }}>
+                                <Plus size={14} /> New
+                            </button>
+                        )}
+                    </div>
+                    <div className="card-body" style={{ maxHeight: 400, overflowY: 'auto', padding: '10px 0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {noticeData?.notices?.length > 0 ? noticeData.notices.map(notice => (
+                                <div key={notice.id} style={{ padding: '12px 16px', borderRadius: 12, background: 'var(--bg-hover)', position: 'relative' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                        <span className={`badge ${notice.type === 'holiday' ? 'amber' : notice.type === 'win' ? 'green' : 'blue'}`} style={{ fontSize: '0.65rem' }}>{notice.type.toUpperCase()}</span>
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(notice.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem' }}>{notice.title}</h4>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{notice.content}</p>
+                                    {hasElevated && (
+                                        <button
+                                            onClick={() => handleDeleteNotice(notice.id)}
+                                            style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'var(--red-400)', cursor: 'pointer', padding: 4, visibility: 'hidden' }}
+                                            className="hover-visible"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            )) : (
+                                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No active notices.</div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="charts-grid" style={{ marginBottom: 32 }}>
+            <div className="charts-grid shadow-charts">
                 <div className="chart-card">
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Briefcase size={16} color="var(--primary-600)" />
@@ -197,7 +301,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 32, alignItems: 'start' }}>
+            <div className="dashboard-lower-grid">
                 <div className="card">
                     <div className="card-header">
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -260,6 +364,86 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+            {showBalanceModal && (
+                <Modal title="Update Company Balance" onClose={() => setShowBalanceModal(false)}>
+                    <form onSubmit={handleUpdateBalance}>
+                        <div className="form-group">
+                            <label>Amount to Add/Subtract (₹)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                className="form-control"
+                                placeholder="E.g. 1000 or -500"
+                                value={balanceInput.amount}
+                                onChange={e => setBalanceInput({ ...balanceInput, amount: e.target.value })}
+                                required
+                            />
+                            <small className="text-muted">Use negative values to deduct from balance manually.</small>
+                        </div>
+                        <div className="form-group" style={{ marginTop: 15 }}>
+                            <label>Description / Notes</label>
+                            <textarea
+                                className="form-control"
+                                rows="3"
+                                placeholder="Reason for manual update..."
+                                value={balanceInput.notes}
+                                onChange={e => setBalanceInput({ ...balanceInput, notes: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-actions" style={{ marginTop: 20 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowBalanceModal(false)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary" disabled={updatingBalance}>
+                                {updatingBalance ? 'Updating...' : 'Update Balance'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {showNoticeModal && (
+                <Modal title="Post Global Notice" onClose={() => setShowNoticeModal(false)}>
+                    <form onSubmit={handleCreateNotice}>
+                        <div className="form-group">
+                            <label>Notice Type</label>
+                            <select
+                                className="form-control"
+                                value={noticeForm.type}
+                                onChange={e => setNoticeForm({ ...noticeForm, type: e.target.value })}
+                            >
+                                <option value="general">General Announcement</option>
+                                <option value="holiday">Office Holiday</option>
+                                <option value="event">Company Event</option>
+                                <option value="win">New Project Win</option>
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginTop: 15 }}>
+                            <label>Title</label>
+                            <input
+                                required
+                                className="form-control"
+                                value={noticeForm.title}
+                                onChange={e => setNoticeForm({ ...noticeForm, title: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginTop: 15 }}>
+                            <label>Content / Message</label>
+                            <textarea
+                                required
+                                className="form-control"
+                                rows="4"
+                                value={noticeForm.content}
+                                onChange={e => setNoticeForm({ ...noticeForm, content: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-actions" style={{ marginTop: 20 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowNoticeModal(false)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary" disabled={savingNotice}>
+                                {savingNotice ? 'Posting...' : 'Post Notice'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
         </div>
     );
 }

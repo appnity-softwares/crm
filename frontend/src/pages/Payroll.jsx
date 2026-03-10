@@ -3,12 +3,15 @@ import { payrollAPI, employeeAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { DollarSign, Plus, Edit2, CheckCircle } from 'lucide-react';
+import { DollarSign, Plus, Edit2, CheckCircle, Wallet } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
+import { useApi } from '../hooks/useApi';
+import { balanceAPI } from '../services/api';
 
 export default function Payroll() {
     const { isAdmin, hasElevated } = useAuth();
     const toast = useToast();
+    const { data: balanceData } = useApi(balanceAPI.get);
     const [records, setRecords] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -133,6 +136,24 @@ export default function Payroll() {
             </div>
 
             <div className="page-content">
+                <div className="stats-grid" style={{ marginBottom: 24 }}>
+                    <div className="card stat-card shadow-sm" style={{ background: 'var(--primary-50)' }}>
+                        <div className="stat-icon primary"><Wallet size={24} /></div>
+                        <div className="stat-content">
+                            <span className="stat-label">Available Balance</span>
+                            <div className="stat-value" style={{ color: 'var(--primary-600)' }}>₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}</div>
+                            <span className="stat-trend positive">On Account</span>
+                        </div>
+                    </div>
+                    <div className="card stat-card shadow-sm">
+                        <div className="stat-icon purple"><DollarSign size={24} /></div>
+                        <div className="stat-content">
+                            <span className="stat-label">Total Payroll (Paid)</span>
+                            <div className="stat-value" style={{ color: 'var(--purple-600)' }}>₹{records.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.net_salary, 0).toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card">
                     {loading ? <div className="spinner" /> : (
                         <DataTable

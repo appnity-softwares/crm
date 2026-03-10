@@ -18,9 +18,12 @@ type Invoice struct {
 	Amount        float64        `gorm:"type:decimal(12,2);not null" json:"amount" binding:"required"`
 	Tax           float64        `gorm:"type:decimal(12,2);default:0" json:"tax"`
 	Total         float64        `gorm:"type:decimal(12,2);not null" json:"total"`
-	Status        string         `gorm:"size:50;not null;default:'draft'" json:"status" binding:"omitempty,oneof=draft sent paid overdue"`
+	PaidAmount    float64        `gorm:"type:decimal(12,2);default:0" json:"paid_amount"`
+	Status        string         `gorm:"size:50;not null;default:'draft'" json:"status" binding:"omitempty,oneof=draft sent paid overdue partial"`
 	DueDate       time.Time      `gorm:"type:date;not null" json:"due_date"`
 	IssuedAt      time.Time      `gorm:"not null" json:"issued_at"`
+	SecureToken   string         `gorm:"size:100;uniqueIndex" json:"secure_token"`
+	RazorpayOrder string         `gorm:"size:100" json:"razorpay_order_id"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
@@ -31,6 +34,10 @@ func (i *Invoice) BeforeCreate(tx *gorm.DB) error {
 	i.Total = i.Amount + i.Tax
 	if i.IssuedAt.IsZero() {
 		i.IssuedAt = time.Now()
+	}
+
+	if i.SecureToken == "" {
+		i.SecureToken = uuid.New().String()
 	}
 
 	// Auto-generate invoice number: INV-YYYYMMDD-XXXX

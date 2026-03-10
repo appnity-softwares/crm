@@ -4,15 +4,19 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { useNotifications } from '../context/NotificationContext';
 import Modal from '../components/ui/Modal';
-import { Receipt, Plus, Download, Eye, CheckCircle, Clock, Edit2, FileText } from 'lucide-react';
+import { Receipt, Plus, Download, Eye, CheckCircle, Clock, Edit2, FileText, Send, Copy, CreditCard } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useApi } from '../hooks/useApi';
+import { balanceAPI } from '../services/api';
+import { Wallet } from 'lucide-react';
 
 export default function Invoices() {
     const { isAdmin } = useAuth();
     const toast = useToast();
     const { addNotification } = useNotifications();
+    const { data: balanceData } = useApi(balanceAPI.get);
     const [invoices, setInvoices] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -120,6 +124,19 @@ export default function Invoices() {
         } catch { toast('Failed', 'error'); }
     };
 
+    const handleRemind = async (id) => {
+        try {
+            await invoiceAPI.remind(id);
+            toast('Reminder sent!');
+        } catch { toast('Failed to send reminder', 'error'); }
+    };
+
+    const copyPortalLink = (token) => {
+        const link = `${window.location.origin}/portal/${token}`;
+        navigator.clipboard.writeText(link);
+        toast('Portal link copied!');
+    };
+
     const currency = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
@@ -129,6 +146,7 @@ export default function Invoices() {
         { header: 'Project', accessor: r => r.project?.name || '—' },
         { header: 'Amount', accessor: 'amount', render: r => currency(r.amount) },
         { header: 'Total', accessor: 'total', render: r => <span style={{ fontWeight: 700 }}>{currency(r.total)}</span> },
+        { header: 'Due', accessor: r => r.total - (r.paid_amount || 0), render: r => <span style={{ color: r.total - (r.paid_amount || 0) > 0 ? 'var(--red-500)' : 'var(--green-600)', fontWeight: 600 }}>{currency(r.total - (r.paid_amount || 0))}</span> },
         { header: 'Due Date', accessor: 'due_date', render: r => formatDate(r.due_date) },
         {
             header: 'Status',
@@ -146,6 +164,12 @@ export default function Invoices() {
                     <button className="btn btn-sm btn-secondary" onClick={() => setShowPreview(inv)} title="Preview">
                         <Download size={12} />
                     </button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => copyPortalLink(inv.secure_token)} title="Copy Portal Link">
+                        <Copy size={12} />
+                    </button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleRemind(inv.id)} title="Send Reminder">
+                        <Send size={12} />
+                    </button>
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(inv)} title="Edit">
                         <Edit2 size={12} />
                     </button>
@@ -160,6 +184,7 @@ export default function Invoices() {
                             <option value="draft">Draft</option>
                             <option value="sent">Sent</option>
                             <option value="paid">Paid</option>
+                            <option value="partial">Partial</option>
                             <option value="overdue">Overdue</option>
                         </select>
                     )}
@@ -183,6 +208,30 @@ export default function Invoices() {
             </div>
 
             <div className="page-content">
+                <div className="stats-grid" style={{ marginBottom: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                    <div className="card stat-card shadow-sm" style={{ background: 'var(--primary-50)' }}>
+                        <div className="stat-icon primary"><Wallet size={20} /></div>
+                        <div className="stat-content">
+                            <span className="stat-label">Available Balance</span>
+                            <div className="stat-value" style={{ color: 'var(--primary-600)' }}>₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}</div>
+                        </div>
+                    </div>
+                    <div className="card stat-card shadow-sm">
+                        <div className="stat-icon green"><CheckCircle size={20} /></div>
+                        <div className="stat-content">
+                            <span className="stat-label">Total Received</span>
+                            <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                    <div className="card stat-card shadow-sm">
+                        <div className="stat-icon amber"><Clock size={20} /></div>
+                        <div className="stat-content">
+                            <span className="stat-label">Pending Collection</span>
+                            <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{invoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card">
                     {loading ? <div className="spinner" /> : (
                         <DataTable
@@ -243,9 +292,10 @@ export default function Invoices() {
                                 <p style={{ margin: '4px 0', color: '#666' }}>#{showPreview.invoice_number}</p>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <h3 style={{ margin: 0 }}>APPNITY CORE</h3>
-                                <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>123 Business Hub, Tech Park</p>
-                                <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>Bangalore, KA 560001</p>
+                                <h3 style={{ margin: 0 }}>APPNITY SOFTWARES PRIVATE LIMITED</h3>
+                                <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>123 Business Hub, Tech Park, Bangalore</p>
+                                <p style={{ margin: '2px 0', fontSize: '0.85rem' }}><strong>GST:</strong> 29XXXXX0000X1Z5 | <strong>CIN:</strong> U72900KA2023PTCXXXXXX</p>
+                                <p style={{ margin: '2px 0', fontSize: '0.85rem' }}>Email: accounts@appnity.softwares</p>
                             </div>
                         </div>
 

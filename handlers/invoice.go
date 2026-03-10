@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"gorm.io/gorm"
 )
 
 type CreateInvoiceInput struct {
@@ -183,7 +184,21 @@ func UpdateInvoiceStatus(c *gin.Context) {
 		return
 	}
 
-	database.DB.Model(&invoice).Update("status", input.Status)
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&invoice).Update("status", input.Status).Error; err != nil {
+			return err
+		}
+
+		if input.Status == "paid" {
+			return AdjustBalance(tx, invoice.Total, "income", "Invoice: "+invoice.ID.String(), "Payment from "+invoice.ClientName)
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status and balance"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Invoice status updated",

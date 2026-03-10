@@ -8,17 +8,22 @@ import (
 )
 
 type Project struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
-	Name        string         `gorm:"size:255;not null" json:"name" binding:"required"`
-	Description string         `gorm:"type:text" json:"description"`
-	Status      string         `gorm:"size:50;not null;default:'planning'" json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
-	StartDate   time.Time      `gorm:"type:date" json:"start_date"`
-	EndDate     *time.Time     `gorm:"type:date" json:"end_date"`
-	CreatedBy   uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
-	Creator     User           `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	ID              uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	Name            string         `gorm:"size:255;not null" json:"name" binding:"required"`
+	Description     string         `gorm:"type:text" json:"description"`
+	Status          string         `gorm:"size:50;not null;default:'planning'" json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
+	Progress        int            `gorm:"default:0" json:"progress"`
+	PendingProgress *int           `gorm:"default:null" json:"pending_progress"`
+	PortalToken     string         `gorm:"size:100;uniqueIndex" json:"client_portal_token"`
+	StartDate       time.Time      `gorm:"type:date" json:"start_date"`
+	EndDate         *time.Time     `gorm:"type:date" json:"end_date"`
+	ClientID        *uuid.UUID     `gorm:"type:uuid;index" json:"client_id"`
+	Client          *User          `gorm:"foreignKey:ClientID" json:"client,omitempty"`
+	CreatedBy       uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
+	Creator         User           `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
 
 	Assignments []ProjectAssignment `gorm:"foreignKey:ProjectID" json:"assignments,omitempty"`
 	Transfers   []ProjectTransfer   `gorm:"foreignKey:ProjectID" json:"transfers,omitempty"`
@@ -26,6 +31,9 @@ type Project struct {
 
 func (p *Project) BeforeCreate(tx *gorm.DB) error {
 	p.ID = uuid.New()
+	if p.PortalToken == "" {
+		p.PortalToken = uuid.New().String()
+	}
 	return nil
 }
 

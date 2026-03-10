@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Info, CheckCircle, AlertTriangle, X, Search, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Bell, Info, CheckCircle, AlertTriangle, X, Search, ChevronDown, Sun, Moon, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -31,16 +31,25 @@ export default function TopHeader() {
     return (
         <>
             <header className="top-header">
-                <div className="header-search-container">
-                    <button
-                        className="header-search-bar"
-                        onClick={() => setShowPalette(true)}
-                        type="button"
-                    >
-                        <Search size={16} />
-                        <span className="search-placeholder">Search anything…</span>
-                        <kbd className="search-command">⌘K</kbd>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button className="header-action-btn" onClick={() => {
+                        const nextHidden = localStorage.getItem('sidebar_hidden') !== 'true';
+                        localStorage.setItem('sidebar_hidden', nextHidden);
+                        window.dispatchEvent(new Event('sidebar-toggle'));
+                    }}>
+                        <Menu size={18} />
                     </button>
+                    <div className="header-search-container">
+                        <button
+                            className="header-search-bar"
+                            onClick={() => setShowPalette(true)}
+                            type="button"
+                        >
+                            <Search size={16} />
+                            <span className="search-placeholder">Search anything…</span>
+                            <kbd className="search-command">⌘K</kbd>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="header-actions">

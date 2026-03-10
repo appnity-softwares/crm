@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 
 export default function Login() {
     const { user, login } = useAuth();
@@ -9,7 +9,11 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    if (user) return <Navigate to="/" replace />;
+    if (user) {
+        if (user.role === 'prospect') return <Navigate to="/prospect-dashboard" replace />;
+        if (user.role === 'client') return <Navigate to="/client-dashboard" replace />;
+        return <Navigate to="/" replace />;
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -57,9 +61,12 @@ export default function Login() {
                             required
                         />
                     </div>
-                    <button className="login-btn" disabled={loading}>
+                    <button className="login-btn" disabled={loading} style={{ marginTop: '1rem', padding: '0.8rem', width: '100%', border: 'none', borderRadius: '8px', background: 'var(--primary-600)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
                         {loading ? 'Signing in...' : 'Sign In'}
                     </button>
+                    <div style={{ textAlign: 'center', marginTop: 15, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        Don't have an account? <Link to="/register" style={{ color: 'var(--primary-600)', fontWeight: 600, textDecoration: 'none' }}>Create one here</Link>
+                    </div>
                 </form>
             </div>
         </div>

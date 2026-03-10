@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"gorm.io/gorm"
 )
 
 type CreatePayrollInput struct {
@@ -155,15 +156,32 @@ func UpdatePayroll(c *gin.Context) {
 	}
 	payroll.CalculateNetSalary()
 
-	if input.Status == "paid" && payroll.Status != "paid" {
-		now := time.Now()
-		payroll.PaidAt = &now
-		payroll.Status = "paid"
-	} else if input.Status != "" {
-		payroll.Status = input.Status
-	}
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		if input.Status == "paid" && payroll.Status != "paid" {
+			now := time.Now()
+			payroll.PaidAt = &now
+			payroll.Status = "paid"
+		} else if input.Status != "" {
+			payroll.Status = input.Status
+		}
 
-	database.DB.Save(&payroll)
+		if err := tx.Save(&payroll).Error; err != nil {
+			return err
+		}
+
+		if payroll.Status == "paid" && input.Status == "paid" {
+			// Extract user name for reference
+			var emp models.User
+			tx.First(&emp, "id = ?", payroll.UserID)
+			return AdjustBalance(tx, -payroll.NetSalary, "expense", "Payroll: "+emp.Name, "Salary for "+time.Month(payroll.Month).String()+" "+time.Now().Format("2006"))
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payroll and balance"})
+		return
+	}
 
 	// Notify employee if paid
 	if payroll.Status == "paid" {

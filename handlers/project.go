@@ -24,6 +24,7 @@ type UpdateProjectInput struct {
 	Status      string `json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
 	StartDate   string `json:"start_date"`
 	EndDate     string `json:"end_date"`
+	Progress    *int   `json:"progress"`
 }
 
 type AssignMemberInput struct {
@@ -91,6 +92,13 @@ func GetProjects(c *gin.Context) {
 	var projects []models.Project
 	query := database.DB.Preload("Creator").Preload("Assignments").Preload("Assignments.User")
 
+	role, _ := c.Get("role")
+	userID, _ := c.Get("user_id")
+
+	if role == "client" {
+		query = query.Where("client_id = ?", userID)
+	}
+
 	if status := c.Query("status"); status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -139,8 +147,26 @@ func UpdateProject(c *gin.Context) {
 	}
 
 	var project models.Project
-	if err := database.DB.First(&project, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("Assignments").First(&project, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+	userRole, _ := c.Get("user_role")
+
+	// Check if user is admin/manager OR an assigned employee
+	isAssigned := false
+	for _, a := range project.Assignments {
+		if a.UserID == uid && a.RemovedAt == nil {
+			isAssigned = true
+			break
+		}
+	}
+
+	if userRole != "admin" && userRole != "manager" && !isAssigned {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to update this project"})
 		return
 	}
 
@@ -175,6 +201,15 @@ func UpdateProject(c *gin.Context) {
 			return
 		}
 		updates["end_date"] = endDate
+	}
+	if input.Progress != nil {
+		if userRole == "admin" || userRole == "manager" {
+			updates["progress"] = *input.Progress
+			updates["pending_progress"] = nil // Clear any pending
+		} else {
+			updates["pending_progress"] = *input.Progress
+			// Don't update "progress" yet
+		}
 	}
 
 	database.DB.Model(&project).Updates(updates)
@@ -343,4 +378,47 @@ func RemoveMember(c *gin.Context) {
 	database.DB.Save(&assignment)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Member removed from project"})
+}
+
+// ApproveProjectUpdate approves a pending progress update
+func ApproveProjectUpdate(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	var input struct {
+		Action string `json:"action" binding:"required,oneof=approve reject"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var project models.Project
+	if err := database.DB.First(&project, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	if project.PendingProgress == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No pending updates to approve"})
+		return
+	}
+
+	if input.Action == "approve" {
+		project.Progress = *project.PendingProgress
+	}
+	project.PendingProgress = nil
+
+	if err := database.DB.Save(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Project update " + input.Action + "d",
+		"project": project,
+	})
 }

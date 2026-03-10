@@ -36,8 +36,15 @@ export function AuthProvider({ children }) {
     const isManager = user?.role === 'manager';
     const hasElevated = isAdmin || isManager;
 
+    const canAccess = (moduleKey) => {
+        if (isAdmin) return true;
+        if (!user) return false;
+        const perms = user.permissions ? user.permissions.split(',') : [];
+        return perms.includes(moduleKey);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isManager, hasElevated }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isManager, hasElevated, canAccess }}>
             {children}
         </AuthContext.Provider>
     );

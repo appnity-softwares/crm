@@ -25,6 +25,8 @@ type UpdateEmployeeInput struct {
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
 	Phone       string `json:"phone"`
+	Permissions string `json:"permissions"`
+	Avatar      string `json:"avatar"`
 	IsActive    *bool  `json:"is_active"`
 }
 
@@ -153,8 +155,14 @@ func UpdateEmployee(c *gin.Context) {
 	if input.Phone != "" {
 		updates["phone"] = input.Phone
 	}
+	if input.Permissions != "" {
+		updates["permissions"] = input.Permissions
+	}
 	if input.IsActive != nil {
 		updates["is_active"] = *input.IsActive
+	}
+	if input.Avatar != "" {
+		updates["avatar"] = input.Avatar
 	}
 
 	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
@@ -187,6 +195,47 @@ func DeleteEmployee(c *gin.Context) {
 	database.DB.Model(&user).Update("is_active", false)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Employee deactivated successfully"})
+}
+
+func UpdateProfile(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+
+	var input struct {
+		Name   string `json:"name"`
+		Phone  string `json:"phone"`
+		Avatar string `json:"avatar"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, "id = ?", uid).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if input.Name != "" {
+		updates["name"] = input.Name
+	}
+	if input.Phone != "" {
+		updates["phone"] = input.Phone
+	}
+	if input.Avatar != "" {
+		updates["avatar"] = input.Avatar
+	}
+
+	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
+		return
+	}
+
+	database.DB.First(&user, "id = ?", uid)
+	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully", "user": user})
 }
 
 // GetEmployeeStats returns comprehensive statistics for an employee

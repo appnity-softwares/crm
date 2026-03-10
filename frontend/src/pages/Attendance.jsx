@@ -26,12 +26,31 @@ export default function Attendance() {
     const [employees, setEmployees] = useState([]);
     const [saving, setSaving] = useState(false);
 
+    // Filters
+    const [filterDate, setFilterDate] = useState('');
+    const [filterMonth, setFilterMonth] = useState('');
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+
     const load = async () => {
         setLoading(true);
+        const params = {};
+        if (filterDate) {
+            params.from = filterDate;
+            params.to = filterDate;
+        } else if (filterMonth && filterYear) {
+            const firstDay = `${filterYear}-${filterMonth.padStart(2, '0')}-01`;
+            const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+            params.from = firstDay;
+            params.to = `${filterYear}-${filterMonth.padStart(2, '0')}-${lastDay}`;
+        } else if (filterYear) {
+            params.from = `${filterYear}-01-01`;
+            params.to = `${filterYear}-12-31`;
+        }
+
         try {
             const { data } = hasElevated
-                ? await attendanceAPI.getAll()
-                : await attendanceAPI.getMine();
+                ? await attendanceAPI.getAll(params)
+                : await attendanceAPI.getMine(params);
             setRecords(data.attendance || []);
             if (hasElevated) {
                 const { data: empData } = await employeeAPI.getAll();
@@ -40,7 +59,7 @@ export default function Attendance() {
         } catch { } finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { load(); }, [filterDate, filterMonth, filterYear]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -143,6 +162,36 @@ export default function Attendance() {
             </div>
 
             <div className="page-content">
+                {/* Advanced Filters */}
+                <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Filter by Year</label>
+                            <select className="form-control" value={filterYear} onChange={e => { setFilterYear(e.target.value); setFilterDate(''); }}>
+                                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Filter by Month</label>
+                            <select className="form-control" value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setFilterDate(''); }}>
+                                <option value="">All Months</option>
+                                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                                    <option key={m} value={i + 1}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                            <label style={{ fontSize: '0.75rem' }}>Specific Date</label>
+                            <div style={{ position: 'relative' }}>
+                                <input type="date" className="form-control" value={filterDate} onChange={e => { setFilterDate(e.target.value); setFilterMonth(''); }} />
+                            </div>
+                        </div>
+                        <button className="btn btn-secondary" onClick={() => { setFilterDate(''); setFilterMonth(''); setFilterYear(new Date().getFullYear().toString()); }}>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
                 <div className="card">
                     {loading ? <div className="spinner" /> : (
                         <DataTable

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pushp314/erp-crm/config"
 	"github.com/pushp314/erp-crm/database"
+	"github.com/pushp314/erp-crm/handlers"
 	"github.com/pushp314/erp-crm/routes"
 )
 
@@ -19,6 +20,9 @@ func main() {
 	// Seed admin user and configs
 	database.SeedAdmin()
 	database.SeedConfigs()
+
+	// Initialize Socket.io
+	handlers.InitSocket()
 
 	// Setup Gin router
 	r := gin.Default()
@@ -44,6 +48,10 @@ func main() {
 			"service": "ERP-CRM API",
 		})
 	})
+
+	// Socket.io routes
+	r.GET("/socket.io/*any", handlers.SocketCORS, handlers.SocketHandler)
+	r.POST("/socket.io/*any", handlers.SocketCORS, handlers.SocketHandler)
 
 	// Register all routes
 	routes.SetupRoutes(r)

@@ -4,7 +4,9 @@ import { useTheme } from '../context/ThemeContext';
 import { employeeAPI } from '../services/api';
 import Modal from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
-import { User, Mail, Shield, Phone, Building, Calendar, Edit3, Key, Loader2 } from 'lucide-react';
+import { User, Mail, Shield, Phone, Building, Calendar, Edit3, Key, Loader2, Camera } from 'lucide-react';
+import { uploadToCloudinary } from '../services/cloudinary';
+import { userAPI } from '../services/api';
 
 export default function Profile() {
     const { user, login } = useAuth();
@@ -33,17 +35,27 @@ export default function Profile() {
         e.preventDefault();
         setSaving(true);
         try {
-            const { data } = await employeeAPI.update(user.id, profileForm);
+            await userAPI.updateProfile(profileForm);
             toast('Profile updated successfully', 'success');
             setProfileModalOpen(false);
-            // Optionally update user in context if backend returns updated user
-            if (data.employee) {
-                // This is a bit tricky since context might need a full refresh
-                // For now, toast is good, or we could reload.
-                window.location.reload();
-            }
+            window.location.reload();
         } catch (err) {
             toast(err.response?.data?.error || 'Failed to update profile', 'error');
+        } finally { setSaving(false); }
+    };
+
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setSaving(true);
+        try {
+            const url = await uploadToCloudinary(file);
+            await userAPI.updateProfile({ avatar: url });
+            toast('Avatar updated!', 'success');
+            window.location.reload();
+        } catch (err) {
+            toast(err.message || 'Upload failed', 'error');
         } finally { setSaving(false); }
     };
 
@@ -75,7 +87,21 @@ export default function Profile() {
             <div className="profile-grid">
                 <div className="profile-sidebar">
                     <div className="profile-avatar-card" style={{ marginBottom: 24, padding: '32px 24px', textAlign: 'center' }}>
-                        <div className="profile-avatar-large" style={{ width: 90, height: 90, fontSize: '2rem', margin: '0 auto' }}>{initials}</div>
+                        <div className="profile-avatar-wrapper" style={{ position: 'relative', width: 90, height: 90, margin: '0 auto' }}>
+                            {user?.avatar ? (
+                                <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                                <div className="profile-avatar-large" style={{ width: 90, height: 90, fontSize: '2rem' }}>{initials}</div>
+                            )}
+                            <label className="avatar-upload-btn" style={{
+                                position: 'absolute', bottom: 0, right: 0, background: 'var(--primary-600)',
+                                color: 'white', padding: 6, borderRadius: '50%', cursor: 'pointer',
+                                border: '3px solid var(--bg-card)', display: 'flex'
+                            }}>
+                                <Camera size={14} />
+                                <input type="file" hidden accept="image/*" onChange={handleAvatarUpload} />
+                            </label>
+                        </div>
                         <h2 style={{ marginTop: 16 }}>{user?.name}</h2>
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
                             <div className="profile-role" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>

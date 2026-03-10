@@ -38,6 +38,14 @@ func Connect() {
 		&models.DailyReport{},
 		&models.FeatureFlag{},
 		&models.Notification{},
+		&models.Expense{},
+		&models.CompanyBalance{},
+		&models.BalanceLog{},
+		&models.Leave{},
+		&models.Notice{},
+		&models.Message{},
+		&models.Task{},
+		&models.Ticket{},
 	)
 	if err != nil {
 		log.Fatal("❌ Failed to auto-migrate:", err)
