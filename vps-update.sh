@@ -12,6 +12,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 PROJECT_DIR=$(pwd)
+export PATH=$PATH:/usr/local/go/bin:/snap/bin
 echo "Updating project in $PROJECT_DIR"
 
 # 1. Pull latest code (Assume git is already set up and authenticated on the branch you want)
