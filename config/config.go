@@ -9,14 +9,18 @@ import (
 )
 
 type Config struct {
-	Port             string
-	DBHost           string
-	DBPort           string
-	DBUser           string
-	DBPassword       string
-	DBName           string
-	JWTSecret        string
-	JWTRefreshSecret string
+	Port                   string
+	DBHost                 string
+	DBPort                 string
+	DBUser                 string
+	DBPassword             string
+	DBName                 string
+	JWTSecret              string
+	JWTRefreshSecret       string
+	RazorpayKeyID          string
+	RazorpayKeySecret      string
+	CloudinaryCloudName    string
+	CloudinaryUploadPreset string
 }
 
 var AppConfig *Config
@@ -28,14 +32,18 @@ func LoadConfig() {
 	}
 
 	AppConfig = &Config{
-		Port:             getEnv("PORT", "8080"),
-		DBHost:           getEnv("DB_HOST", "localhost"),
-		DBPort:           getEnv("DB_PORT", "5432"),
-		DBUser:           getEnv("DB_USER", "postgres"),
-		DBPassword:       getEnv("DB_PASSWORD", "postgres"),
-		DBName:           getEnv("DB_NAME", "erp_crm"),
-		JWTSecret:        getEnv("JWT_SECRET", "default-secret"),
-		JWTRefreshSecret: getEnv("JWT_REFRESH_SECRET", "default-refresh-secret"),
+		Port:                   getEnv("PORT", "8080"),
+		DBHost:                 getEnv("DB_HOST", "localhost"),
+		DBPort:                 getEnv("DB_PORT", "5432"),
+		DBUser:                 getEnv("DB_USER", "postgres"),
+		DBPassword:             getEnv("DB_PASSWORD", "postgres"),
+		DBName:                 getEnv("DB_NAME", "erp_crm"),
+		JWTSecret:              getEnv("JWT_SECRET", "default-secret"),
+		JWTRefreshSecret:       getEnv("JWT_REFRESH_SECRET", "default-refresh-secret"),
+		RazorpayKeyID:          getEnv("RAZORPAY_KEY_ID", ""),
+		RazorpayKeySecret:      getEnv("RAZORPAY_KEY_SECRET", ""),
+		CloudinaryCloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryUploadPreset: getEnv("CLOUDINARY_UPLOAD_PRESET", ""),
 	}
 
 	log.Println("✅ Configuration loaded successfully")

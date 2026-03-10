@@ -8,8 +8,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pushp314/erp-crm/config"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"github.com/razorpay/razorpay-go"
 	"gorm.io/gorm"
 )
 
@@ -58,17 +60,28 @@ func InitializePayment(c *gin.Context) {
 		return
 	}
 
-	// In a real app, you'd call Razorpay API here to create an Order
-	// razorpay.orders.create({amount: invoice.Total * 100, currency: "INR", receipt: invoice.ID})
-	// For now, let's mock the order ID
-	orderID := fmt.Sprintf("order_%s", invoice.ID.String()[:8])
+	client := razorpay.NewClient(config.AppConfig.RazorpayKeyID, config.AppConfig.RazorpayKeySecret)
+
+	data := map[string]interface{}{
+		"amount":   int(invoice.Total * 100), // in paise
+		"currency": "INR",
+		"receipt":  invoice.InvoiceNumber,
+	}
+
+	body, err := client.Order.Create(data, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Razorpay order"})
+		return
+	}
+
+	orderID := body["id"].(string)
 	invoice.RazorpayOrder = orderID
 	database.DB.Save(&invoice)
 
 	c.JSON(http.StatusOK, gin.H{
 		"order_id": orderID,
-		"amount":   invoice.Total * 100, // in paise
-		"key":      "rzp_test_MOCK_KEY", // Should be from config/env
+		"amount":   invoice.Total * 100,
+		"key":      config.AppConfig.RazorpayKeyID,
 	})
 }
 
@@ -92,17 +105,17 @@ func VerifyPayment(c *gin.Context) {
 		return
 	}
 
-	// signature = hmac_sha256(order_id + "|" + payment_id, secret)
-	// We mock verification for now
-	secret := "MOCK_SECRET"
+	// Verify signature
+	secret := config.AppConfig.RazorpayKeySecret
 	data := input.RazorpayOrderID + "|" + input.RazorpayPaymentID
 	h := hmac.New(sha256.New, []byte(secret))
 	h.Write([]byte(data))
 	expectedSignature := hex.EncodeToString(h.Sum(nil))
 
-	// In reality, you'd compare input.RazorpaySignature with expectedSignature
-	// if input.RazorpaySignature != expectedSignature { ... }
-	fmt.Println("Expected Sig:", expectedSignature)
+	if input.RazorpaySignature != expectedSignature {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
+		return
+	}
 
 	// Update invoice as paid
 	err := database.DB.Transaction(func(tx *gorm.DB) error {

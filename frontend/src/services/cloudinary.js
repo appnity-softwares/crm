@@ -1,6 +1,6 @@
 export const uploadToCloudinary = async (file) => {
-    const cloudName = "dnx7h7b7z"; // Mock Cloud Name - User should replace
-    const uploadPreset = "erp_unsigned"; // Mock Preset - User should replace
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
     const formData = new FormData();
     formData.append("file", file);
