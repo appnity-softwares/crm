@@ -14,22 +14,29 @@ func SendMessage(c *gin.Context) {
 	senderID, _ := c.Get("user_id")
 	sid := senderID.(uuid.UUID)
 
-	var msg models.Message
-	if err := c.ShouldBindJSON(&msg); err != nil {
+	// Use a clean request struct to avoid binding issues with nested User models
+	var req struct {
+		ReceiverID uuid.UUID `json:"receiver_id" binding:"required"`
+		Content    string    `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		fmt.Printf("Chat Bind Error: %v\n", err)
-		// Optionally log the raw body here if needed, but binding error is usually enough
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message format", "details": err.Error()})
 		return
 	}
 
-	msg.SenderID = &sid
+	msg := models.Message{
+		SenderID:   &sid,
+		ReceiverID: req.ReceiverID,
+		Content:    req.Content,
+	}
 
 	if err := database.DB.Create(&msg).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 		return
 	}
 
-	// Broadcast via socket so recipient sees it in real-time
+	// Broadcast via socket if available
 	if SocketServer != nil {
 		receiverID := msg.ReceiverID.String()
 		msgMap := map[string]interface{}{
@@ -40,7 +47,6 @@ func SendMessage(c *gin.Context) {
 			"created_at":  msg.CreatedAt,
 		}
 		SocketServer.BroadcastToRoom("/", receiverID, "message", msgMap)
-		// Also broadcast to sender to sync tabs
 		SocketServer.BroadcastToRoom("/", msg.SenderID.String(), "message", msgMap)
 	}
 
