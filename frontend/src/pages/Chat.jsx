@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Send, User, Search, MessageSquare } from 'lucide-react';
-import { io } from 'socket.io-client';
+import io from 'socket.io-client';
 
 const SOCKET_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:8080'
