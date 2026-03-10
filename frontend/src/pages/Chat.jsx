@@ -18,19 +18,42 @@ export default function Chat() {
     const [search, setSearch] = useState('');
     const scrollRef = useRef();
     const socketRef = useRef();
+    const selectedUserRef = useRef(selectedUser);
 
     useEffect(() => {
-        socketRef.current = io(SOCKET_URL);
-        socketRef.current.emit('join', me.id);
+        selectedUserRef.current = selectedUser;
+    }, [selectedUser]);
 
-        socketRef.current.on('message', (msg) => {
-            if (selectedUser && (msg.sender_id === selectedUser.id || msg.sender_id === me.id)) {
-                setMessages(prev => [...prev, msg]);
+    useEffect(() => {
+        const socket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling'], // Fallback support
+            withCredentials: true
+        });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+            console.log('Connected to chat server');
+            socket.emit('join', me.id);
+        });
+
+        socket.on('message', (msg) => {
+            const currentSelected = selectedUserRef.current;
+            // Update messages if it's from the person we are chatting with
+            if (currentSelected && (msg.sender_id === currentSelected.id || msg.sender_id === me.id)) {
+                setMessages(prev => {
+                    // Avoid duplicate messages if sender also added locally
+                    if (prev.find(m => m.id === msg.id)) return prev;
+                    return [...prev, msg];
+                });
             }
         });
 
-        return () => socketRef.current.disconnect();
-    }, [me.id, selectedUser]);
+        socket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err);
+        });
+
+        return () => socket.disconnect();
+    }, [me.id]);
 
     useEffect(() => {
         const loadUsers = async () => {

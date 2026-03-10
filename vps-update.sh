@@ -36,8 +36,13 @@ rm -rf "$PROJECT_DIR/frontend/dist"
 echo "Building Frontend..."
 cd "$PROJECT_DIR/frontend"
 
-# Pass the backend URL variable for the build
+# Pass variables for the build
 export VITE_API_URL="https://crmapi.appnity.cloud/api"
+# Read Cloudinary vars from main .env to ensure they are available to Vite
+if [ -f "$PROJECT_DIR/.env" ]; then
+    export VITE_CLOUDINARY_CLOUD_NAME=$(grep CLOUDINARY_CLOUD_NAME "$PROJECT_DIR/.env" | cut -d '=' -f2)
+    export VITE_CLOUDINARY_UPLOAD_PRESET=$(grep CLOUDINARY_UPLOAD_PRESET "$PROJECT_DIR/.env" | cut -d '=' -f2)
+fi
 
 npm install
 npm run build

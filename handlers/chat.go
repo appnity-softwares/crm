@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,11 +16,12 @@ func SendMessage(c *gin.Context) {
 
 	var msg models.Message
 	if err := c.ShouldBindJSON(&msg); err != nil {
+		fmt.Printf("Chat Bind Error: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	msg.SenderID = sid
+	msg.SenderID = &sid
 
 	if err := database.DB.Create(&msg).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})

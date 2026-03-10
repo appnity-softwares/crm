@@ -27,7 +27,23 @@ func InitSocket() {
 	})
 
 	server.OnEvent("/", "message", func(s socketio.Conn, msg map[string]interface{}) {
-		receiverID := msg["receiver_id"].(string)
+		// Use a safer way to get the receiver_id
+		rid, ok := msg["receiver_id"]
+		if !ok {
+			return
+		}
+
+		receiverID, ok := rid.(string)
+		if !ok {
+			return
+		}
+
+		// Also broadcast to the sender's room so other tabs of the same user see it
+		sid, _ := msg["sender_id"].(string)
+		if sid != "" {
+			server.BroadcastToRoom("/", sid, "message", msg)
+		}
+
 		server.BroadcastToRoom("/", receiverID, "message", msg)
 	})
 
