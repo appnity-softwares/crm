@@ -17,7 +17,8 @@ func SendMessage(c *gin.Context) {
 	var msg models.Message
 	if err := c.ShouldBindJSON(&msg); err != nil {
 		fmt.Printf("Chat Bind Error: %v\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// Optionally log the raw body here if needed, but binding error is usually enough
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message format", "details": err.Error()})
 		return
 	}
 
@@ -26,6 +27,21 @@ func SendMessage(c *gin.Context) {
 	if err := database.DB.Create(&msg).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 		return
+	}
+
+	// Broadcast via socket so recipient sees it in real-time
+	if SocketServer != nil {
+		receiverID := msg.ReceiverID.String()
+		msgMap := map[string]interface{}{
+			"id":          msg.ID,
+			"sender_id":   msg.SenderID,
+			"receiver_id": msg.ReceiverID,
+			"content":     msg.Content,
+			"created_at":  msg.CreatedAt,
+		}
+		SocketServer.BroadcastToRoom("/", receiverID, "message", msgMap)
+		// Also broadcast to sender to sync tabs
+		SocketServer.BroadcastToRoom("/", msg.SenderID.String(), "message", msgMap)
 	}
 
 	c.JSON(http.StatusCreated, msg)

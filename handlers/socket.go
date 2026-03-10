@@ -13,6 +13,8 @@ var SocketServer *socketio.Server
 
 func InitSocket() {
 	server := socketio.NewServer(nil)
+	// Some versions of go-socket.io might need manual engine.io options
+	// but nil usually works if CORS is handled by Gin.
 	SocketServer = server
 
 	server.OnConnect("/", func(s socketio.Conn) error {
