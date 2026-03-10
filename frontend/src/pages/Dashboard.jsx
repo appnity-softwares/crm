@@ -165,7 +165,7 @@ export default function Dashboard() {
                         <h3><DollarSign size={16} /> Revenue Growth Trend</h3>
                     </div>
                     <div className="card-body">
-                        <div style={{ width: '100%', height: 320 }}>
+                        <div style={{ width: '100%', height: 320, minHeight: 320 }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={revenueData}>
                                     <defs>
@@ -230,7 +230,7 @@ export default function Dashboard() {
                         <Briefcase size={16} color="var(--primary-600)" />
                         Project Distribution
                     </h3>
-                    <div style={{ width: '100%', height: 300, marginTop: 20 }}>
+                    <div style={{ width: '100%', height: 300, minHeight: 300, marginTop: 20 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={projectData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -251,7 +251,7 @@ export default function Dashboard() {
                         <Activity size={16} color="var(--green-600)" />
                         Attendance Trend
                     </h3>
-                    <div style={{ width: '100%', height: 300, marginTop: 20 }}>
+                    <div style={{ width: '100%', height: 300, minHeight: 300, marginTop: 20 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={statsData?.attendance_trend || []}>
                                 <defs>

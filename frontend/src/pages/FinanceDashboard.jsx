@@ -56,13 +56,13 @@ export default function FinanceDashboard() {
                 ))}
             </div>
 
-            <div className="charts-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
                 <div className="card">
                     <div className="card-header">
                         <h3><Landmark size={18} /> Financial Health (Income vs Expense)</h3>
                     </div>
                     <div className="card-body">
-                        <div style={{ width: '100%', height: 350 }}>
+                        <div style={{ width: '100%', height: 350, minHeight: 350 }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={[{ name: 'Total', income: data.total_income, expense: data.total_expense }]}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -82,7 +82,7 @@ export default function FinanceDashboard() {
                         <h3><PieIcon size={18} /> Budget Allocation</h3>
                     </div>
                     <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '100%', height: 350 }}>
+                        <div style={{ width: '100%', height: 350, minHeight: 350 }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
