@@ -26,8 +26,11 @@ export default function Chat() {
 
     useEffect(() => {
         const socket = io(SOCKET_URL, {
-            transports: ['websocket', 'polling'], // Fallback support
-            withCredentials: true
+            transports: ['websocket', 'polling'],
+            withCredentials: true,
+            forceNew: true,
+            reconnectionAttempts: 5,
+            timeout: 10000
         });
         socketRef.current = socket;
 
