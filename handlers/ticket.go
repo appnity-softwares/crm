@@ -68,15 +68,16 @@ func UpdateTicketStatus(c *gin.Context) {
 
 	// Authorization check
 	authorized := false
-	if userRole == "admin" || userRole == "manager" {
+	switch userRole {
+	case "admin", "manager":
 		authorized = true
-	} else if userRole == "client" {
+	case "client":
 		var project models.Project
 		database.DB.First(&project, "id = ?", ticket.ProjectID)
 		if project.ClientID != nil && *project.ClientID == uid {
 			authorized = true
 		}
-	} else if userRole == "employee" {
+	case "employee":
 		var assignment models.ProjectAssignment
 		if err := database.DB.Where("project_id = ? AND user_id = ? AND removed_at IS NULL", ticket.ProjectID, uid).First(&assignment).Error; err == nil {
 			authorized = true
