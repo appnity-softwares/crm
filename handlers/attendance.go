@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -17,6 +18,26 @@ var (
 	qrTokens   = make(map[string]time.Time)
 	qrTokensMu sync.Mutex
 )
+
+// parseFlexibleTime tries to parse a time string. If it's just HH:MM, it combines it with the provided date.
+func parseFlexibleTime(timeStr string, baseDate time.Time) (time.Time, error) {
+	// Try RFC3339 first
+	if t, err := time.Parse(time.RFC3339, timeStr); err == nil {
+		return t, nil
+	}
+
+	// Try HH:MM
+	if t, err := time.Parse("15:04", timeStr); err == nil {
+		return time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), t.Hour(), t.Minute(), 0, 0, time.Local), nil
+	}
+
+	// Try HH:MM:SS
+	if t, err := time.Parse("15:04:05", timeStr); err == nil {
+		return time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local), nil
+	}
+
+	return time.Time{}, fmt.Errorf("invalid time format: %s", timeStr)
+}
 
 // GenerateQRToken generates a dynamic, time-limited token for attendance scanning
 func GenerateQRToken(c *gin.Context) {
@@ -251,24 +272,22 @@ func ManualAttendance(c *gin.Context) {
 	}
 
 	if req.CheckIn != "" {
-		if ci, err := time.Parse(time.RFC3339, req.CheckIn); err == nil {
+		if ci, err := parseFlexibleTime(req.CheckIn, date); err == nil {
 			attendance.CheckIn = ci
 		} else {
-			// Fallback to current date + provided time if only time is provided (HH:MM)
-			// But RFC3339 is safer. Let's stick to RFC3339 or error.
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format, use RFC3339"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format. Use HH:MM or RFC3339"})
 			return
 		}
 	} else {
-		// Default check-in to 9 AM of that date if not provided and status is present
+		// Default check-in to 9 AM of that date
 		attendance.CheckIn = time.Date(date.Year(), date.Month(), date.Day(), 9, 0, 0, 0, time.Local)
 	}
 
 	if req.CheckOut != "" {
-		if co, err := time.Parse(time.RFC3339, req.CheckOut); err == nil {
+		if co, err := parseFlexibleTime(req.CheckOut, date); err == nil {
 			attendance.CheckOut = &co
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format, use RFC3339"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format. Use HH:MM or RFC3339"})
 			return
 		}
 	}
@@ -315,18 +334,18 @@ func UpdateAttendance(c *gin.Context) {
 		attendance.Status = req.Status
 	}
 	if req.CheckIn != "" {
-		if ci, err := time.Parse(time.RFC3339, req.CheckIn); err == nil {
+		if ci, err := parseFlexibleTime(req.CheckIn, attendance.Date); err == nil {
 			attendance.CheckIn = ci
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format, use RFC3339"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format. Use HH:MM or RFC3339"})
 			return
 		}
 	}
 	if req.CheckOut != "" {
-		if co, err := time.Parse(time.RFC3339, req.CheckOut); err == nil {
+		if co, err := parseFlexibleTime(req.CheckOut, attendance.Date); err == nil {
 			attendance.CheckOut = &co
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format, use RFC3339"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format. Use HH:MM or RFC3339"})
 			return
 		}
 	}

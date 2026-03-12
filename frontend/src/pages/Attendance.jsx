@@ -22,7 +22,7 @@ export default function Attendance() {
     const [showQRScan, setShowQRScan] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ user_id: '', date: '', status: 'present' });
+    const [form, setForm] = useState({ user_id: '', date: '', status: 'present', check_in: '', check_out: '' });
     const [employees, setEmployees] = useState([]);
     const [saving, setSaving] = useState(false);
 
@@ -88,10 +88,20 @@ export default function Attendance() {
 
     const handleEdit = (r) => {
         setEditing(r.id);
+        
+        // ISO to HH:MM helper
+        const formatToHHMM = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        };
+
         setForm({
             user_id: r.user_id,
             date: r.date ? r.date.split('T')[0] : '',
-            status: r.status
+            status: r.status,
+            check_in: formatToHHMM(r.check_in),
+            check_out: formatToHHMM(r.check_out)
         });
         setShowModal(true);
     };
@@ -149,7 +159,7 @@ export default function Attendance() {
                             <button className="btn btn-primary" onClick={() => setShowQRGen(true)}>
                                 <QrCode size={15} /> Live QR Code
                             </button>
-                            <button className="btn btn-secondary" onClick={() => { setEditing(null); setForm({ user_id: '', date: '', status: 'present' }); setShowModal(true); }}>
+                            <button className="btn btn-secondary" onClick={() => { setEditing(null); setForm({ user_id: '', date: '', status: 'present', check_in: '', check_out: '' }); setShowModal(true); }}>
                                 <Plus size={15} /> Manual Entry
                             </button>
                         </>
@@ -240,6 +250,14 @@ export default function Attendance() {
                                     <option value="half_day">Half Day</option>
                                     <option value="leave">Leave</option>
                                 </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Check In</label>
+                                <input type="time" value={form.check_in} onChange={e => setForm({ ...form, check_in: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Check Out</label>
+                                <input type="time" value={form.check_out} onChange={e => setForm({ ...form, check_out: e.target.value })} />
                             </div>
                         </div>
                         <div className="form-actions">
