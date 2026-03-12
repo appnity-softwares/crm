@@ -15,6 +15,8 @@ type Attendance struct {
 	CheckIn   time.Time      `gorm:"not null" json:"check_in"`
 	CheckOut  *time.Time     `json:"check_out"`
 	Status    string         `gorm:"size:50;not null;default:'present'" json:"status" binding:"omitempty,oneof=present absent half_day leave"`
+	IsLate    bool           `gorm:"default:false" json:"is_late"`
+	Remark    string         `gorm:"type:text" json:"remark"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`

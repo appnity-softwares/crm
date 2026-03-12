@@ -9,6 +9,8 @@ import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import QRGenerator from '../components/attendance/QRGenerator';
 import QRScanner from '../components/attendance/QRScanner';
+import { exportToCSV } from '../utils/export';
+import { Download } from 'lucide-react';
 
 export default function Attendance() {
     const { hasElevated, user } = useAuth();
@@ -22,7 +24,7 @@ export default function Attendance() {
     const [showQRScan, setShowQRScan] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ user_id: '', date: '', status: 'present', check_in: '', check_out: '' });
+    const [form, setForm] = useState({ user_id: '', date: '', status: 'present', check_in: '', check_out: '', remark: '', is_late: false });
     const [employees, setEmployees] = useState([]);
     const [saving, setSaving] = useState(false);
 
@@ -101,7 +103,9 @@ export default function Attendance() {
             date: r.date ? r.date.split('T')[0] : '',
             status: r.status,
             check_in: formatToHHMM(r.check_in),
-            check_out: formatToHHMM(r.check_out)
+            check_out: formatToHHMM(r.check_out),
+            remark: r.remark || '',
+            is_late: !!r.is_late
         });
         setShowModal(true);
     };
@@ -128,7 +132,17 @@ export default function Attendance() {
         { header: 'Date', accessor: 'date', render: r => formatDate(r.date) },
         { header: 'Check In', accessor: 'check_in', render: r => formatTime(r.check_in) },
         { header: 'Check Out', accessor: 'check_out', render: r => formatTime(r.check_out) },
-        { header: 'Status', accessor: 'status', render: r => statusBadge(r.status) }
+        { 
+            header: 'Status', 
+            accessor: 'status', 
+            render: r => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {statusBadge(r.status)}
+                    {r.is_late && <span className="badge red" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>LATE</span>}
+                </div>
+            )
+        },
+        { header: 'Remark', accessor: 'remark', render: r => <span className="text-muted" style={{fontSize: '0.85rem'}}>{r.remark || '—'}</span> }
     ];
 
     if (hasElevated) {
@@ -159,19 +173,58 @@ export default function Attendance() {
                             <button className="btn btn-primary" onClick={() => setShowQRGen(true)}>
                                 <QrCode size={15} /> Live QR Code
                             </button>
-                            <button className="btn btn-secondary" onClick={() => { setEditing(null); setForm({ user_id: '', date: '', status: 'present', check_in: '', check_out: '' }); setShowModal(true); }}>
+                            <button className="btn btn-secondary" onClick={() => { setEditing(null); setForm({ user_id: '', date: '', status: 'present', check_in: '', check_out: '', remark: '', is_late: false }); setShowModal(true); }}>
                                 <Plus size={15} /> Manual Entry
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => exportToCSV(records, 'attendance_report', ['user.name', 'date', 'check_in', 'check_out', 'status', 'is_late', 'remark'])}>
+                                <Download size={15} /> Export CSV
                             </button>
                         </>
                     ) : (
-                        <button className="btn btn-primary" onClick={() => setShowQRScan(true)}>
-                            <Scan size={15} /> Scan to Mark Attendance
-                        </button>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            {records.some(r => r.user_id === user.id && r.date?.split('T')[0] === new Date().toISOString().split('T')[0] && !r.check_out) && (
+                                <button className="btn btn-secondary" onClick={async () => {
+                                    if(!window.confirm('Confirm Check-out?')) return;
+                                    try {
+                                        await attendanceAPI.checkOut();
+                                        toast('Checked out successfully');
+                                        load();
+                                    } catch(err) { toast(err.response?.data?.error || 'Check-out failed', 'error'); }
+                                }}>
+                                    <LogOut size={15} /> Check Out
+                                </button>
+                            )}
+                            <button className="btn btn-primary" onClick={() => setShowQRScan(true)}>
+                                <Scan size={15} /> Scan to Mark Attendance
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
 
             <div className="page-content">
+                {hasElevated && (
+                    <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="stat-icon red" style={{ padding: 8 }}><Clock size={16} /></div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Late Today</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+                                    {records.filter(r => r.is_late && r.date?.split('T')[0] === new Date().toISOString().split('T')[0]).length}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="stat-icon green" style={{ padding: 8 }}><UserCheck size={16} /></div>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Checked In</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+                                    {records.filter(r => r.date?.split('T')[0] === new Date().toISOString().split('T')[0]).length}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* Advanced Filters */}
                 <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -258,6 +311,20 @@ export default function Attendance() {
                             <div className="form-group">
                                 <label>Check Out</label>
                                 <input type="time" value={form.check_out} onChange={e => setForm({ ...form, check_out: e.target.value })} />
+                            </div>
+                            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 25 }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="isLateCheck" 
+                                    checked={form.is_late} 
+                                    onChange={e => setForm({ ...form, is_late: e.target.checked })}
+                                    style={{ width: 18, height: 18 }} 
+                                />
+                                <label htmlFor="isLateCheck" style={{ marginBottom: 0, cursor: 'pointer', color: form.is_late ? 'var(--red-600)' : 'inherit', fontWeight: form.is_late ? 600 : 400 }}>Mark as Late</label>
+                            </div>
+                            <div className="form-group full">
+                                <label>Remark</label>
+                                <textarea rows="2" value={form.remark} onChange={e => setForm({ ...form, remark: e.target.value })} placeholder="Optional notes..."></textarea>
                             </div>
                         </div>
                         <div className="form-actions">

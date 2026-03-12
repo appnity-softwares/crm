@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pushp314/erp-crm/database"
@@ -19,6 +20,10 @@ func GetDashboardStats(c *gin.Context) {
 	database.DB.Model(&models.Project{}).Count(&projCount)
 	database.DB.Model(&models.Lead{}).Count(&leadCount)
 	database.DB.Model(&models.Attendance{}).Count(&attCount)
+
+	var lateToday int64
+	today := time.Now().Truncate(24 * time.Hour)
+	database.DB.Model(&models.Attendance{}).Where("is_late = true AND date = ?", today).Count(&lateToday)
 
 	// Projects by status
 	var projectStatus []struct {
@@ -76,6 +81,7 @@ func GetDashboardStats(c *gin.Context) {
 		"projects":         projCount,
 		"leads":            leadCount,
 		"attendance":       attCount,
+		"late_today":       lateToday,
 		"project_status":   projectStatus,
 		"attendance_trend": attTrend,
 	}

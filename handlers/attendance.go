@@ -109,11 +109,18 @@ func QRCheckIn(c *gin.Context) {
 		return
 	}
 
+	now := time.Now()
+	isLate := false
+	if now.Hour() > 10 || (now.Hour() == 10 && now.Minute() >= 15) {
+		isLate = true
+	}
+
 	attendance := models.Attendance{
 		UserID:  uid,
 		Date:    today,
-		CheckIn: time.Now(),
+		CheckIn: now,
 		Status:  "present",
+		IsLate:  isLate,
 	}
 
 	if err := database.DB.Create(&attendance).Error; err != nil {
@@ -140,11 +147,18 @@ func CheckIn(c *gin.Context) {
 		return
 	}
 
+	now := time.Now()
+	isLate := false
+	if now.Hour() > 10 || (now.Hour() == 10 && now.Minute() >= 15) {
+		isLate = true
+	}
+
 	attendance := models.Attendance{
 		UserID:  uid,
 		Date:    today,
-		CheckIn: time.Now(),
+		CheckIn: now,
 		Status:  "present",
+		IsLate:  isLate,
 	}
 
 	if err := database.DB.Create(&attendance).Error; err != nil {
@@ -252,6 +266,8 @@ func ManualAttendance(c *gin.Context) {
 		Status   string    `json:"status" binding:"required"`
 		CheckIn  string    `json:"check_in"`
 		CheckOut string    `json:"check_out"`
+		Remark   string    `json:"remark"`
+		IsLate   bool      `json:"is_late"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -269,6 +285,8 @@ func ManualAttendance(c *gin.Context) {
 		UserID: req.UserID,
 		Date:   date,
 		Status: req.Status,
+		Remark: req.Remark,
+		IsLate: req.IsLate,
 	}
 
 	if req.CheckIn != "" {
@@ -309,6 +327,8 @@ func UpdateAttendance(c *gin.Context) {
 		Status   string    `json:"status"`
 		CheckIn  string    `json:"check_in"`
 		CheckOut string    `json:"check_out"`
+		Remark   string    `json:"remark"`
+		IsLate   *bool     `json:"is_late"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -332,6 +352,12 @@ func UpdateAttendance(c *gin.Context) {
 	}
 	if req.Status != "" {
 		attendance.Status = req.Status
+	}
+	if req.Remark != "" {
+		attendance.Remark = req.Remark
+	}
+	if req.IsLate != nil {
+		attendance.IsLate = *req.IsLate
 	}
 	if req.CheckIn != "" {
 		if ci, err := parseFlexibleTime(req.CheckIn, attendance.Date); err == nil {
@@ -366,4 +392,36 @@ func DeleteAttendance(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Attendance deleted"})
+}
+
+// StartAutoCheckoutTask starts a background goroutine that auto check-outs employees at 5:30 PM (17:30)
+func StartAutoCheckoutTask() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			now := time.Now()
+			// Only run auto-checkout between 17:30 and 23:59
+			if now.Hour() > 17 || (now.Hour() == 17 && now.Minute() >= 30) {
+				var toCheckout []models.Attendance
+				today := now.Truncate(24 * time.Hour)
+
+				// Find active attendances for today (or earlier) that lack a check-out
+				database.DB.Where("check_out IS NULL AND date <= ?", today).Find(&toCheckout)
+
+				for _, att := range toCheckout {
+					// Set checkout to 5:30 PM of the record's date
+					co := time.Date(att.Date.Year(), att.Date.Month(), att.Date.Day(), 17, 30, 0, 0, time.Local)
+					
+					// Avoid setting checkout before checkin (edge case)
+					if co.After(att.CheckIn) {
+						att.CheckOut = &co
+						att.Remark = "Auto check-out"
+						database.DB.Save(&att)
+					}
+				}
+			}
+		}
+	}()
 }

@@ -3,9 +3,11 @@ import { worklogAPI, projectAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { FileText, Plus, Edit2, Trash2 } from 'lucide-react';
+import { FileText, Plus, Edit2, Trash2, History, User } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import LogComparison from '../components/ui/LogComparison';
+import { exportToCSV } from '../utils/export';
+import { Download } from 'lucide-react';
 
 export default function WorkLogs() {
     const { hasElevated, isAdmin } = useAuth();
@@ -17,6 +19,7 @@ export default function WorkLogs() {
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ project_id: '', date: new Date().toISOString().split('T')[0], hours: '', description: '' });
     const [saving, setSaving] = useState(false);
+    const [viewingHistory, setViewingHistory] = useState(null);
 
     const load = async () => {
         setLoading(true);
@@ -82,7 +85,20 @@ export default function WorkLogs() {
         { header: 'Date', accessor: 'date', render: r => formatDate(r.date) },
         { header: 'Project', accessor: r => r.project?.name || 'General Task', render: r => <span className="badge gray">{r.project?.name || 'General Task'}</span> },
         { header: 'Hours', accessor: 'hours', render: r => <span className="badge blue">{r.hours}h</span> },
-        { header: 'Description', accessor: 'description', render: r => <div style={{ maxWidth: 300, whiteSpace: 'normal', fontSize: '0.85rem' }}>{r.description}</div> }
+        { 
+            header: 'Description', 
+            accessor: 'description', 
+            render: r => (
+                <div style={{ maxWidth: 300, whiteSpace: 'normal', fontSize: '0.85rem' }}>
+                    {r.description}
+                    {r.is_edited && (
+                        <div style={{ marginTop: 4 }}>
+                            <span className="badge amber" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Edited</span>
+                        </div>
+                    )}
+                </div>
+            )
+        }
     ];
 
     columns.push({
@@ -90,6 +106,11 @@ export default function WorkLogs() {
         key: 'actions',
         render: (l) => (
             <div style={{ display: 'flex', gap: 6 }}>
+                {l.is_edited && (
+                    <button className="btn btn-sm btn-secondary" onClick={() => setViewingHistory(l)} title="View History">
+                        <History size={12} />
+                    </button>
+                )}
                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(l)}>
                     <Edit2 size={12} />
                 </button>
@@ -110,6 +131,9 @@ export default function WorkLogs() {
                     <p>{hasElevated ? 'All team work logs' : 'Your daily work logs'}</p>
                 </div>
                 <div className="header-actions">
+                    <button className="btn btn-secondary" onClick={() => exportToCSV(logs, 'work_logs_report', ['user.name', 'date', 'project.name', 'hours', 'description', 'is_edited'])}>
+                        <Download size={15} /> Export
+                    </button>
                     <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ project_id: '', date: new Date().toISOString().split('T')[0], hours: '', description: '' }); setShowModal(true); }}>
                         <Plus size={15} /> Log Work
                     </button>
@@ -160,6 +184,54 @@ export default function WorkLogs() {
                             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editing ? 'Update Log' : 'Save Log'}</button>
                         </div>
                     </form>
+                </Modal>
+            )}
+            {viewingHistory && (
+                <Modal title="Work Log Edit History" onClose={() => setViewingHistory(null)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div className="card" style={{ background: 'var(--bg-body)', padding: 12, border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                                <User size={16} color="var(--primary-600)" />
+                                <span style={{ fontWeight: 600 }}>Employee Details</span>
+                            </div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                <div><strong>Name:</strong> {viewingHistory.user?.name}</div>
+                                <div><strong>Email:</strong> {viewingHistory.user?.email}</div>
+                                <div><strong>Department:</strong> {viewingHistory.user?.department || '—'}</div>
+                            </div>
+                        </div>
+
+                        <div className="history-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {viewingHistory.history?.length > 0 ? viewingHistory.history.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((h, i) => (
+                                <div key={h.id} className="history-item" style={{ position: 'relative', paddingLeft: 20, borderLeft: '2px solid var(--primary-200)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                                        {new Date(h.created_at).toLocaleString()} by {h.updater?.name || 'Manager'}
+                                    </div>
+                                    <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: 6, padding: 8 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--red-600)', textDecoration: 'line-through' }}>
+                                                {h.old_content} ({h.old_hours}h)
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--green-600)' }}>
+                                                {h.new_content} ({h.new_hours}h)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-muted" style={{ textAlign: 'center', padding: 20 }}>No history records found.</div>
+                            )}
+                            
+                            <div className="history-item" style={{ position: 'relative', paddingLeft: 20, borderLeft: '2px solid var(--primary-200)' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                                    Original Entry - {new Date(viewingHistory.created_at).toLocaleString()}
+                                </div>
+                                <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: 6, padding: 8, fontSize: '0.8rem' }}>
+                                    Initial submission
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </div>

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"gorm.io/gorm"
 )
 
 type CreateWorkLogInput struct {
@@ -77,7 +78,7 @@ func GetAllWorkLogs(c *gin.Context) {
 		query = query.Where("date <= ?", to)
 	}
 
-	if err := query.Order("date DESC").Find(&logs).Error; err != nil {
+	if err := query.Preload("History").Preload("History.Updater").Order("date DESC").Find(&logs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch work logs"})
 		return
 	}
@@ -102,7 +103,7 @@ func GetMyWorkLogs(c *gin.Context) {
 		query = query.Where("date <= ?", to)
 	}
 
-	if err := query.Order("date DESC").Find(&logs).Error; err != nil {
+	if err := query.Preload("History").Preload("History.Updater").Order("date DESC").Find(&logs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch work logs"})
 		return
 	}
@@ -143,6 +144,11 @@ func UpdateWorkLog(c *gin.Context) {
 		return
 	}
 
+	// Capture old values for history
+	oldDesc := workLog.Description
+	oldHours := workLog.Hours
+	hasSubstantialChange := false
+
 	updates := map[string]interface{}{}
 	if input.ProjectID != nil {
 		updates["project_id"] = input.ProjectID
@@ -156,15 +162,59 @@ func UpdateWorkLog(c *gin.Context) {
 		updates["date"] = date
 	}
 	if input.Hours > 0 {
+		if input.Hours != oldHours {
+			hasSubstantialChange = true
+		}
 		updates["hours"] = input.Hours
 	}
 	if input.Description != "" {
+		if input.Description != oldDesc {
+			hasSubstantialChange = true
+		}
 		updates["description"] = input.Description
 	}
 
-	database.DB.Model(&workLog).Updates(updates)
+	if hasSubstantialChange {
+		updates["is_edited"] = true
+	}
 
-	database.DB.Preload("Project").First(&workLog, "id = ?", id)
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&workLog).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		if hasSubstantialChange {
+			history := models.WorkLogUpdate{
+				WorkLogID:  workLog.ID,
+				OldContent: oldDesc,
+				NewContent: workLog.Description, // This might not be updated in the object yet if using map updates?
+				OldHours:   oldHours,
+				NewHours:   input.Hours,
+				UpdatedBy:  uid,
+			}
+			// Important: If input values are empty (but map was used), we need the final values
+			if input.Description == "" {
+				history.NewContent = oldDesc
+			} else {
+				history.NewContent = input.Description
+			}
+			if input.Hours <= 0 {
+				history.NewHours = oldHours
+			}
+
+			if err := tx.Create(&history).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update work log and history"})
+		return
+	}
+
+	database.DB.Preload("Project").Preload("History").Preload("History.Updater").First(&workLog, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Work log updated successfully",
 		"work_log": workLog,

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { dailyReportsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
-import { CheckCircle, Send, Plus, Edit2, X } from 'lucide-react';
+import { CheckCircle, Send, Plus, Edit2, X, Download } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import LogComparison from '../components/ui/LogComparison';
+import { exportToCSV } from '../utils/export';
 
 const KPI_TEMPLATES = {
     'bdr': {
@@ -228,8 +229,18 @@ export default function DailyReports() {
                 </div>
                 {!hasElevated && (
                     <div className="header-actions">
+                        <button className="btn btn-secondary" onClick={() => exportToCSV(reports, 'daily_kpi_report', ['user.name', 'date', 'status', 'notes', 'admin_remark'])}>
+                            <Download size={15} /> Export
+                        </button>
                         <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(!showForm); if (!showForm) { setFormData({}); setNotes(''); } }}>
                             {showForm ? <X size={15} /> : <Plus size={15} />} {showForm ? 'Cancel' : 'Submit Report'}
+                        </button>
+                    </div>
+                )}
+                {hasElevated && (
+                    <div className="header-actions">
+                        <button className="btn btn-secondary" onClick={() => exportToCSV(reports, 'daily_kpi_report', ['user.name', 'date', 'status', 'notes', 'admin_remark'])}>
+                            <Download size={15} /> Export CSV
                         </button>
                     </div>
                 )}

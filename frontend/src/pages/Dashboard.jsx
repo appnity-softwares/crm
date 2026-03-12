@@ -65,6 +65,7 @@ export default function Dashboard() {
         employees: hasElevated ? (statsData?.employees || 0) : '-',
         projects: statsData?.projects || 0,
         attendance: statsData?.attendance || 0,
+        late_today: statsData?.late_today || 0,
         leads: hasElevated ? (statsData?.leads || 0) : '-'
     };
 
@@ -144,9 +145,21 @@ export default function Dashboard() {
                     <div className="stat-info">
                         <h4>Attendance</h4>
                         <div className="stat-value">{metrics.attendance}</div>
-                        <div className="stat-sub">Recorded entries</div>
+                        <div className="stat-sub">Active today</div>
                     </div>
                 </div>
+                {hasElevated && (
+                    <div className="stat-card">
+                        <div className="stat-icon red"><Activity size={20} /></div>
+                        <div className="stat-info">
+                            <h4>Late Arrivals</h4>
+                            <div className="stat-value" style={{ color: metrics.late_today > 0 ? 'var(--red-600)' : 'inherit' }}>
+                                {metrics.late_today}
+                            </div>
+                            <div className="stat-sub">Late today</div>
+                        </div>
+                    </div>
+                )}
                 {hasElevated && (
                     <div className="stat-card">
                         <div className="stat-icon amber"><Target size={20} /></div>

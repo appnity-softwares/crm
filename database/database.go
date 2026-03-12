@@ -29,6 +29,7 @@ func Connect() {
 		&models.User{},
 		&models.Attendance{},
 		&models.WorkLog{},
+		&models.WorkLogUpdate{},
 		&models.Project{},
 		&models.ProjectAssignment{},
 		&models.ProjectTransfer{},

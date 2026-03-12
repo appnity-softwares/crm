@@ -31,6 +31,9 @@ func main() {
 	// Initialize Socket.io
 	handlers.InitSocket()
 
+	// Start background tasks
+	handlers.StartAutoCheckoutTask()
+
 	// Setup Gin router
 	r := gin.Default()
 
