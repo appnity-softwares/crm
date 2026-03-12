@@ -85,13 +85,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := utils.GenerateAccessToken(user.ID, user.Email, user.Role)
+	accessToken, err := utils.GenerateAccessToken(user.ID, user.Email, user.Role, user.Permissions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return
 	}
 
-	refreshToken, err := utils.GenerateRefreshToken(user.ID, user.Email, user.Role)
+	refreshToken, err := utils.GenerateRefreshToken(user.ID, user.Email, user.Role, user.Permissions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return
@@ -108,6 +108,7 @@ func Login(c *gin.Context) {
 			"role":        user.Role,
 			"department":  user.Department,
 			"designation": user.Designation,
+			"permissions": user.Permissions,
 		},
 	})
 }
@@ -138,7 +139,7 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := utils.GenerateAccessToken(user.ID, user.Email, user.Role)
+	accessToken, err := utils.GenerateAccessToken(user.ID, user.Email, user.Role, user.Permissions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return

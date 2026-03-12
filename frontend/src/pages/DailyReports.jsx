@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { CheckCircle, Send, Plus, Edit2, X } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
+import LogComparison from '../components/ui/LogComparison';
 
 const KPI_TEMPLATES = {
     'bdr': {
@@ -235,6 +236,7 @@ export default function DailyReports() {
             </div>
 
             <div className="page-content">
+                <LogComparison />
                 {/* Advanced Filters */}
                 <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>

@@ -180,6 +180,7 @@ export default function Employees() {
                                     <option value="employee">Employee</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
+                                    <option value="client">Client</option>
                                 </select>
                             </div>
                             <div className="form-group">

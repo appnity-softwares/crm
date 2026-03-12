@@ -72,14 +72,30 @@ func GetInvoices(c *gin.Context) {
 	var invoices []models.Invoice
 	query := database.DB.Preload("Project")
 
-	if status := c.Query("status"); status != "" {
-		query = query.Where("status = ?", status)
-	}
-	if clientName := c.Query("client_name"); clientName != "" {
-		query = query.Where("client_name ILIKE ?", "%"+clientName+"%")
-	}
-	if projectID := c.Query("project_id"); projectID != "" {
-		query = query.Where("project_id = ?", projectID)
+	userRole, _ := c.Get("user_role")
+	userID, _ := c.Get("user_id")
+
+	switch userRole {
+	case "admin", "manager":
+		// Can filter by everything
+		if status := c.Query("status"); status != "" {
+			query = query.Where("status = ?", status)
+		}
+		if clientName := c.Query("client_name"); clientName != "" {
+			query = query.Where("client_name ILIKE ?", "%"+clientName+"%")
+		}
+		if projectID := c.Query("project_id"); projectID != "" {
+			query = query.Where("project_id = ?", projectID)
+		}
+	case "client":
+		// Clients only see their own project invoices
+		query = query.Joins("JOIN projects ON projects.id = invoices.project_id").
+			Where("projects.client_id = ?", userID)
+	default:
+		// Employees usually don't see invoices unless they have finance perms
+		// For now, restrict
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
 	}
 
 	if err := query.Order("created_at DESC").Find(&invoices).Error; err != nil {
@@ -105,6 +121,24 @@ func GetInvoice(c *gin.Context) {
 	if err := database.DB.Preload("Project").First(&invoice, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Invoice not found"})
 		return
+	}
+
+	userRole, _ := c.Get("user_role")
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+
+	if userRole != "admin" && userRole != "manager" {
+		if userRole == "client" {
+			var project models.Project
+			database.DB.First(&project, "id = ?", invoice.ProjectID)
+			if project.ClientID == nil || *project.ClientID != uid {
+				c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this invoice"})
+				return
+			}
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"invoice": invoice})

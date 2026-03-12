@@ -92,11 +92,16 @@ func GetProjects(c *gin.Context) {
 	var projects []models.Project
 	query := database.DB.Preload("Creator").Preload("Assignments").Preload("Assignments.User")
 
-	role, _ := c.Get("role")
+	userRole, _ := c.Get("user_role")
 	userID, _ := c.Get("user_id")
 
-	if role == "client" {
+	switch userRole {
+	case "client":
 		query = query.Where("client_id = ?", userID)
+	case "employee":
+		// Employees see projects they are assigned to
+		query = query.Joins("JOIN project_assignments ON project_assignments.project_id = projects.id").
+			Where("project_assignments.user_id = ? AND project_assignments.removed_at IS NULL", userID)
 	}
 
 	if status := c.Query("status"); status != "" {
@@ -133,6 +138,33 @@ func GetProject(c *gin.Context) {
 		First(&project, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
 		return
+	}
+
+	userRole, _ := c.Get("user_role")
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+
+	// Admin and Manager can see everything
+	if userRole != "admin" && userRole != "manager" {
+		if userRole == "client" {
+			if project.ClientID == nil || *project.ClientID != uid {
+				c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this project"})
+				return
+			}
+		} else {
+			// Employee check
+			isAssigned := false
+			for _, a := range project.Assignments {
+				if a.UserID == uid && a.RemovedAt == nil {
+					isAssigned = true
+					break
+				}
+			}
+			if !isAssigned {
+				c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this project"})
+				return
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"project": project})

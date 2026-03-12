@@ -5,6 +5,7 @@ import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
 import { FileText, Plus, Edit2, Trash2 } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
+import LogComparison from '../components/ui/LogComparison';
 
 export default function WorkLogs() {
     const { hasElevated, isAdmin } = useAuth();
@@ -116,6 +117,7 @@ export default function WorkLogs() {
             </div>
 
             <div className="page-content">
+                <LogComparison />
                 <div className="card">
                     {loading ? <div className="spinner" /> : (
                         <DataTable

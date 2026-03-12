@@ -1,11 +1,14 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 type CompanyBalance struct {
 	gorm.Model
-	TotalBalance  float64 `json:"total_balance"`
-	LastUpdatedBy uint    `json:"last_updated_by"`
+	TotalBalance  float64    `json:"total_balance"`
+	LastUpdatedBy *uuid.UUID `gorm:"type:uuid" json:"last_updated_by"`
 }
 
 type BalanceLog struct {

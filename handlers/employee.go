@@ -13,7 +13,7 @@ type CreateEmployeeInput struct {
 	Name        string `json:"name" binding:"required"`
 	Email       string `json:"email" binding:"required,email"`
 	Password    string `json:"password" binding:"required,min=6"`
-	Role        string `json:"role" binding:"required,oneof=admin manager employee"`
+	Role        string `json:"role" binding:"required,oneof=admin manager employee client"`
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
 	Phone       string `json:"phone"`
@@ -21,7 +21,7 @@ type CreateEmployeeInput struct {
 
 type UpdateEmployeeInput struct {
 	Name        string `json:"name"`
-	Role        string `json:"role" binding:"omitempty,oneof=admin manager employee"`
+	Role        string `json:"role" binding:"omitempty,oneof=admin manager employee client"`
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
 	Phone       string `json:"phone"`
@@ -116,6 +116,12 @@ func GetEmployee(c *gin.Context) {
 		return
 	}
 
+	userRole, _ := c.Get("user_role")
+	if userRole == "client" || userRole == "prospect" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"employee": user})
 }
 
@@ -202,9 +208,10 @@ func UpdateProfile(c *gin.Context) {
 	uid := userID.(uuid.UUID)
 
 	var input struct {
-		Name   string `json:"name"`
-		Phone  string `json:"phone"`
-		Avatar string `json:"avatar"`
+		Name     string `json:"name"`
+		Phone    string `json:"phone"`
+		Avatar   string `json:"avatar"`
+		NavStyle string `json:"nav_style"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -228,6 +235,9 @@ func UpdateProfile(c *gin.Context) {
 	if input.Avatar != "" {
 		updates["avatar"] = input.Avatar
 	}
+	if input.NavStyle != "" {
+		updates["nav_style"] = input.NavStyle
+	}
 
 	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
@@ -249,6 +259,15 @@ func GetEmployeeStats(c *gin.Context) {
 	var user models.User
 	if err := database.DB.First(&user, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
+		return
+	}
+
+	userRole, _ := c.Get("user_role")
+	currentUserID, _ := c.Get("user_id")
+
+	// Only admin, manager, or the user themselves can see detailed stats/logs
+	if userRole != "admin" && userRole != "manager" && currentUserID != id {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view these statistics"})
 		return
 	}
 

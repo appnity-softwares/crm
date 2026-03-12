@@ -122,6 +122,39 @@ export default function Profile() {
                 </div>
 
                 <div className="profile-content">
+                    <div className="card" style={{ marginBottom: 24 }}>
+                        <div className="card-header">
+                            <h3>Appearance & Navigation</h3>
+                        </div>
+                        <div className="card-body">
+                            <div className="settings-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Navigation Style</h4>
+                                    <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose your preferred navigation interface.</p>
+                                </div>
+                                <select 
+                                    className="form-select" 
+                                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-body)', color: 'var(--text-primary)' }}
+                                    value={user?.nav_style || 'both'}
+                                    disabled={saving}
+                                    onChange={async (e) => {
+                                        setSaving(true);
+                                        try {
+                                            await userAPI.updateProfile({ nav_style: e.target.value });
+                                            window.location.reload(); // Reload to pick up context changes or use local update
+                                        } catch (err) {
+                                            toast('Failed to save preference', 'error');
+                                        } finally { setSaving(false); }
+                                    }}
+                                >
+                                    <option value="both">Both (Sidebar + Floating)</option>
+                                    <option value="sidebar">Classic Sidebar Only</option>
+                                    <option value="floating">Modern Floating Icons Only</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="card">
                         <div className="card-header">
                             <h3>Personal Information</h3>

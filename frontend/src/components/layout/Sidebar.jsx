@@ -91,18 +91,11 @@ export default function Sidebar() {
 
     const closeMobile = () => setOpen(false);
 
-    if (isHidden) return (
-        <button className="mobile-menu-btn" style={{ display: 'flex' }} onClick={() => {
-            localStorage.setItem('sidebar_hidden', 'false');
-            window.dispatchEvent(new Event('sidebar-toggle'));
-        }}>
-            <Menu size={20} />
-        </button>
-    );
+    if (isHidden) return null; // Let TopHeader handle the show icon
 
     return (
         <>
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger (only if not hidden) */}
             <button className="mobile-menu-btn" onClick={() => setOpen(true)}>
                 <Menu size={20} />
             </button>
@@ -143,13 +136,6 @@ export default function Sidebar() {
                         </div>
                     ))}
                 </nav>
-
-                <div className="sidebar-footer">
-                    <button className="sidebar-logout" onClick={logout}>
-                        <LogOut size={18} />
-                        <span>Sign Out</span>
-                    </button>
-                </div>
             </aside>
         </>
     );

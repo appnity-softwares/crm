@@ -6,11 +6,14 @@ import (
 	"github.com/pushp314/erp-crm/middleware"
 )
 
-func SetupRoutes(r *gin.Engine) {
+func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 	// ─── Public routes ───────────────────────────────────────────
 	api := r.Group("/api")
 	{
 		public := api.Group("/auth")
+		if authLimiter != nil {
+			public.Use(middleware.RateLimitMiddleware(authLimiter))
+		}
 		{
 			public.POST("/login", handlers.Login)
 			public.POST("/register", handlers.Register)

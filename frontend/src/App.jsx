@@ -34,14 +34,23 @@ import ClientDashboard from './pages/ClientDashboard';
 
 function ProtectedLayout() {
     const { user, loading } = useAuth();
+
     if (loading) return <div className="spinner" style={{ height: '100vh' }} />;
     if (!user) return <Navigate to="/login" replace />;
 
+    const navStyle = user.nav_style || 'both';
+    const isExternalUser = user.role === 'prospect' || user.role === 'client';
+    const showSidebar = !isExternalUser && (navStyle === 'sidebar' || navStyle === 'both');
+    const showFloating = !isExternalUser && (navStyle === 'floating' || navStyle === 'both');
+
     return (
         <div className="app-layout">
-            {(user.role !== 'prospect' && user.role !== 'client') && <Sidebar />}
-            {(user.role !== 'prospect' && user.role !== 'client') && <FloatingNav />}
-            <main className="main-area" style={(user.role === 'prospect' || user.role === 'client') ? { marginLeft: 0 } : {}}>
+            {showSidebar && <Sidebar />}
+            {showFloating && <FloatingNav />}
+            <main 
+                className="main-area" 
+                style={(!showSidebar) ? { marginLeft: 0 } : {}}
+            >
                 <TopHeader />
                 <Outlet />
             </main>

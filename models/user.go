@@ -19,6 +19,7 @@ type User struct {
 	Phone       string         `gorm:"size:20" json:"phone"`
 	Permissions string         `gorm:"type:text" json:"permissions"` // Comma-separated or JSON
 	Avatar      string         `gorm:"size:1000" json:"avatar"`
+	NavStyle    string         `gorm:"size:50;default:'both'" json:"nav_style"`
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`

@@ -4,12 +4,21 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"github.com/pushp314/erp-crm/utils"
 	"gorm.io/gorm"
 )
 
 func GetBalance(c *gin.Context) {
+	role, _ := c.Get("user_role")
+	perms, _ := c.Get("user_permissions")
+	if role != "admin" && role != "manager" && !utils.ContainsPermission(perms.(string), "finance") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
 	var balance models.CompanyBalance
 	result := database.DB.First(&balance)
 	if result.Error != nil {
@@ -26,6 +35,13 @@ func GetBalance(c *gin.Context) {
 }
 
 func GetFinanceStats(c *gin.Context) {
+	role, _ := c.Get("user_role")
+	perms, _ := c.Get("user_permissions")
+	if role != "admin" && role != "manager" && !utils.ContainsPermission(perms.(string), "finance") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
 	var totalIncome float64
 	var totalExpense float64
 
@@ -36,9 +52,6 @@ func GetFinanceStats(c *gin.Context) {
 	database.DB.Model(&models.Expense{}).Select("SUM(amount)").Row().Scan(&totalExpense)
 
 	// Simple GST estimation (assuming 18% GST in India for services)
-	// GST Payable = (Income * 18/118) - (Expense * 18/118) -- if prices are inclusive
-	// Or simply Income * 0.18 -- if prices are exclusive.
-	// Let's assume income/expense recorded is the base amount for simplicity of reporting.
 	gstIncome := totalIncome * 0.18
 	gstExpense := totalExpense * 0.18
 	gstNet := gstIncome - gstExpense
@@ -51,9 +64,6 @@ func GetFinanceStats(c *gin.Context) {
 		Income  float64 `json:"income"`
 		Expense float64 `json:"expense"`
 	}
-
-	// Complex query simplified: just return last 6 months placeholders or logic
-	// For production, this should grouping by DATE_TRUNC or similar.
 
 	c.JSON(http.StatusOK, gin.H{
 		"total_income":  totalIncome,
@@ -75,7 +85,8 @@ func UpdateBalanceManual(c *gin.Context) {
 		return
 	}
 
-	uid := c.GetUint("userID")
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		var balance models.CompanyBalance
@@ -87,7 +98,7 @@ func UpdateBalanceManual(c *gin.Context) {
 		}
 
 		balance.TotalBalance += input.Amount
-		balance.LastUpdatedBy = uid
+		balance.LastUpdatedBy = &uid
 		if err := tx.Save(&balance).Error; err != nil {
 			return err
 		}

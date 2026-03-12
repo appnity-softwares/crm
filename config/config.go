@@ -38,12 +38,30 @@ func LoadConfig() {
 		DBUser:                 getEnv("DB_USER", "postgres"),
 		DBPassword:             getEnv("DB_PASSWORD", "postgres"),
 		DBName:                 getEnv("DB_NAME", "erp_crm"),
-		JWTSecret:              getEnv("JWT_SECRET", "default-secret"),
-		JWTRefreshSecret:       getEnv("JWT_REFRESH_SECRET", "default-refresh-secret"),
+		JWTSecret:              getEnv("JWT_SECRET", ""),
+		JWTRefreshSecret:       getEnv("JWT_REFRESH_SECRET", ""),
 		RazorpayKeyID:          getEnv("RAZORPAY_KEY_ID", ""),
 		RazorpayKeySecret:      getEnv("RAZORPAY_KEY_SECRET", ""),
 		CloudinaryCloudName:    getEnv("CLOUDINARY_CLOUD_NAME", ""),
 		CloudinaryUploadPreset: getEnv("CLOUDINARY_UPLOAD_PRESET", ""),
+	}
+
+	// Enforce critical secrets in production
+	if os.Getenv("GIN_MODE") == "release" {
+		if AppConfig.JWTSecret == "" || AppConfig.JWTRefreshSecret == "" {
+			log.Fatal("❌ FATAL: JWT_SECRET and JWT_REFRESH_SECRET must be set in production mode")
+		}
+		if AppConfig.RazorpayKeyID == "" || AppConfig.RazorpayKeySecret == "" {
+			log.Println("⚠️ Warning: Razorpay credentials missing. Payments will fail.")
+		}
+	} else {
+		// Set defaults for development if empty
+		if AppConfig.JWTSecret == "" {
+			AppConfig.JWTSecret = "dev-secret-key-change-me"
+		}
+		if AppConfig.JWTRefreshSecret == "" {
+			AppConfig.JWTRefreshSecret = "dev-refresh-secret-key-change-me"
+		}
 	}
 
 	log.Println("✅ Configuration loaded successfully")

@@ -93,11 +93,16 @@ func GetLeads(c *gin.Context) {
 	var leads []models.Lead
 	query := database.DB.Preload("Assignee").Preload("AddedBy")
 
-	role, _ := c.Get("role")
+	userRole, _ := c.Get("user_role")
 	userID, _ := c.Get("user_id")
 
-	if role == "employee" {
+	switch userRole {
+	case "employee":
 		query = query.Where("assigned_to = ?", userID)
+	case "client", "prospect":
+		// Public roles should NOT see the internal lead list
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
 	}
 
 	if status := c.Query("status"); status != "" {
@@ -138,6 +143,19 @@ func GetLead(c *gin.Context) {
 	var lead models.Lead
 	if err := database.DB.Preload("Assignee").First(&lead, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Lead not found"})
+		return
+	}
+
+	userRole, _ := c.Get("user_role")
+	userID, _ := c.Get("user_id")
+
+	// Authorization check
+	if userRole == "employee" && (lead.AssignedTo == nil || *lead.AssignedTo != userID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this lead"})
+		return
+	}
+	if userRole == "client" || userRole == "prospect" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 

@@ -10,17 +10,19 @@ import (
 )
 
 type JWTClaims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
-	Role   string    `json:"role"`
+	UserID      uuid.UUID `json:"user_id"`
+	Email       string    `json:"email"`
+	Role        string    `json:"role"`
+	Permissions string    `json:"permissions"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(userID uuid.UUID, email, role string) (string, error) {
+func GenerateAccessToken(userID uuid.UUID, email, role, permissions string) (string, error) {
 	claims := JWTClaims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:      userID,
+		Email:       email,
+		Role:        role,
+		Permissions: permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -32,11 +34,12 @@ func GenerateAccessToken(userID uuid.UUID, email, role string) (string, error) {
 	return token.SignedString([]byte(config.AppConfig.JWTSecret))
 }
 
-func GenerateRefreshToken(userID uuid.UUID, email, role string) (string, error) {
+func GenerateRefreshToken(userID uuid.UUID, email, role, permissions string) (string, error) {
 	claims := JWTClaims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:      userID,
+		Email:       email,
+		Role:        role,
+		Permissions: permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

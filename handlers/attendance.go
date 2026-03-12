@@ -226,9 +226,11 @@ func GetMyAttendance(c *gin.Context) {
 // ManualAttendance records a manual entry by admin
 func ManualAttendance(c *gin.Context) {
 	var req struct {
-		UserID uuid.UUID `json:"user_id" binding:"required"`
-		Date   string    `json:"date" binding:"required"`
-		Status string    `json:"status" binding:"required"`
+		UserID   uuid.UUID `json:"user_id" binding:"required"`
+		Date     string    `json:"date" binding:"required"`
+		Status   string    `json:"status" binding:"required"`
+		CheckIn  string    `json:"check_in"`
+		CheckOut string    `json:"check_out"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -248,6 +250,29 @@ func ManualAttendance(c *gin.Context) {
 		Status: req.Status,
 	}
 
+	if req.CheckIn != "" {
+		if ci, err := time.Parse(time.RFC3339, req.CheckIn); err == nil {
+			attendance.CheckIn = ci
+		} else {
+			// Fallback to current date + provided time if only time is provided (HH:MM)
+			// But RFC3339 is safer. Let's stick to RFC3339 or error.
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format, use RFC3339"})
+			return
+		}
+	} else {
+		// Default check-in to 9 AM of that date if not provided and status is present
+		attendance.CheckIn = time.Date(date.Year(), date.Month(), date.Day(), 9, 0, 0, 0, time.Local)
+	}
+
+	if req.CheckOut != "" {
+		if co, err := time.Parse(time.RFC3339, req.CheckOut); err == nil {
+			attendance.CheckOut = &co
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format, use RFC3339"})
+			return
+		}
+	}
+
 	if err := database.DB.Create(&attendance).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create record"})
 		return
@@ -260,9 +285,11 @@ func ManualAttendance(c *gin.Context) {
 func UpdateAttendance(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
-		UserID uuid.UUID `json:"user_id"`
-		Date   string    `json:"date"`
-		Status string    `json:"status"`
+		UserID   uuid.UUID `json:"user_id"`
+		Date     string    `json:"date"`
+		Status   string    `json:"status"`
+		CheckIn  string    `json:"check_in"`
+		CheckOut string    `json:"check_out"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -286,6 +313,22 @@ func UpdateAttendance(c *gin.Context) {
 	}
 	if req.Status != "" {
 		attendance.Status = req.Status
+	}
+	if req.CheckIn != "" {
+		if ci, err := time.Parse(time.RFC3339, req.CheckIn); err == nil {
+			attendance.CheckIn = ci
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_in format, use RFC3339"})
+			return
+		}
+	}
+	if req.CheckOut != "" {
+		if co, err := time.Parse(time.RFC3339, req.CheckOut); err == nil {
+			attendance.CheckOut = &co
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid check_out format, use RFC3339"})
+			return
+		}
 	}
 
 	if err := database.DB.Save(&attendance).Error; err != nil {

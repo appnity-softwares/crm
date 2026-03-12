@@ -2607,3 +2607,13 @@ tr:last-child td {
     /* Shrink charts slightly on mobile */
   }
 }
+/* ─── Dropdown Visibility Fix ───────────────────── */
+.notification-dropdown,
+.user-menu-dropdown {
+  z-index: 2100 !important;
+}
+
+/* Ensure dropdowns aren't cut off */
+.top-header {
+  overflow: visible !important;
+}
