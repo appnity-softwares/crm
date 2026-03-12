@@ -84,6 +84,7 @@ export const dailyReportsAPI = {
     getAll: (params) => api.get('/reports', { params }),
     getMine: (params) => api.get('/reports/me', { params }),
     getStats: () => api.get('/reports/stats'),
+    update: (id, data) => api.put(`/reports/${id}`, data),
     review: (id, data) => api.put(`/reports/${id}/review`, data),
 };
 

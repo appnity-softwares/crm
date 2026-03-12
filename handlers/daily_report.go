@@ -118,3 +118,55 @@ func ReviewDailyReport(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Report reviewed successfully", "report": report})
 }
+
+func UpdateDailyReport(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid report ID"})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+	role, _ := c.Get("user_role")
+
+	var report models.DailyReport
+	if err := database.DB.First(&report, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		return
+	}
+
+	// Security: Only owner or admin can update
+	if report.UserID != uid && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to update this report"})
+		return
+	}
+
+	var req struct {
+		Date    string `json:"date"`
+		Metrics string `json:"metrics"`
+		Notes   string `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Date != "" {
+		report.Date = req.Date
+	}
+	if req.Metrics != "" {
+		report.Metrics = req.Metrics
+	}
+	if req.Notes != "" {
+		report.Notes = req.Notes
+	}
+
+	if err := database.DB.Save(&report).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update report"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Daily report updated successfully", "report": report})
+}

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,7 +40,7 @@ func SendMessage(c *gin.Context) {
 	// Broadcast via socket if available
 	if SocketServer != nil {
 		receiverID := msg.ReceiverID.String()
-		msgMap := map[string]interface{}{
+		msgMap := map[string]any{
 			"id":          msg.ID,
 			"sender_id":   msg.SenderID,
 			"receiver_id": msg.ReceiverID,
@@ -86,17 +87,14 @@ func GetConversations(c *gin.Context) {
 
 	switch role {
 	case "admin", "manager":
-		// Admins and Managers see everyone
 		query.Find(&users)
 	case "employee":
-		// Employees see internal team + clients they are assigned to, or have messaged
 		var clientIDs []uuid.UUID
 		database.DB.Table("projects").
 			Joins("join project_assignments on project_assignments.project_id = projects.id").
 			Where("project_assignments.user_id = ? AND projects.client_id IS NOT NULL", mid).
 			Pluck("projects.client_id", &clientIDs)
 
-		// Also get IDs from message history
 		var messagedIDs []uuid.UUID
 		database.DB.Model(&models.Message{}).
 			Where("sender_id = ? OR receiver_id = ?", mid, mid).
@@ -105,7 +103,6 @@ func GetConversations(c *gin.Context) {
 
 		query.Where("role IN ('admin', 'manager', 'employee') OR id IN (?) OR id IN (?)", clientIDs, messagedIDs).Find(&users)
 	case "client":
-		// Clients see ONLY those assigned to their projects OR those they have messaged
 		var assignedUserIDs []uuid.UUID
 		database.DB.Table("project_assignments").
 			Joins("join projects on projects.id = project_assignments.project_id").
@@ -120,15 +117,64 @@ func GetConversations(c *gin.Context) {
 
 		allowedIDs := append(assignedUserIDs, messagedIDs...)
 		if len(allowedIDs) == 0 {
-			c.JSON(http.StatusOK, gin.H{"users": []models.User{}})
+			c.JSON(http.StatusOK, gin.H{"users": []any{}})
 			return
 		}
 		query.Where("id IN (?)", allowedIDs).Find(&users)
 	default:
-		// Prospects etc. see no one by default
-		c.JSON(http.StatusOK, gin.H{"users": []models.User{}})
+		c.JSON(http.StatusOK, gin.H{"users": []any{}})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"users": users})
+	// ─── Fetch Unread Counts ───
+	type UnreadResult struct {
+		SenderID uuid.UUID
+		Count    int64
+	}
+	var unreadResults []UnreadResult
+	database.DB.Model(&models.Message{}).
+		Where("receiver_id = ? AND is_read = ?", mid, false).
+		Select("sender_id, count(*) as count").
+		Group("sender_id").
+		Scan(&unreadResults)
+
+	unreadMap := make(map[uuid.UUID]int64)
+	for _, r := range unreadResults {
+		unreadMap[r.SenderID] = r.Count
+	}
+
+	// ─── Fetch Last Message Timestamps ───
+	type LastMsgResult struct {
+		OtherID uuid.UUID
+		LastAt  time.Time
+	}
+	var lastResults []LastMsgResult
+	database.DB.Model(&models.Message{}).
+		Where("sender_id = ? OR receiver_id = ?", mid, mid).
+		Select("CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as other_id, max(created_at) as last_at", mid).
+		Group("other_id").
+		Scan(&lastResults)
+
+	lastMsgMap := make(map[uuid.UUID]time.Time)
+	for _, r := range lastResults {
+		lastMsgMap[r.OtherID] = r.LastAt
+	}
+
+	// ─── Assemble Response ───
+	type UserConv struct {
+		models.User
+		UnreadCount   int64     `json:"unread_count"`
+		LastMessageAt time.Time `json:"last_message_at"`
+	}
+
+	var conversations []UserConv
+	for _, u := range users {
+		conversations = append(conversations, UserConv{
+			User:          u,
+			UnreadCount:   unreadMap[u.ID],
+			LastMessageAt: lastMsgMap[u.ID],
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": conversations})
 }

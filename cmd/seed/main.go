@@ -107,7 +107,7 @@ func main() {
 			roleTypes := []string{"bdr", "content", "proposal", "general"}
 			roleType := roleTypes[rand.Intn(len(roleTypes))]
 
-			metrics := make(map[string]interface{})
+			metrics := make(map[string]any)
 			metrics["role_type"] = roleType
 			if roleType == "bdr" {
 				metrics["cold_emails"] = 40 + rand.Intn(20)

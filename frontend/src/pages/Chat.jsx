@@ -42,6 +42,8 @@ export default function Chat() {
             }
         };
         loadUsers();
+        const userPolling = setInterval(loadUsers, 5000);
+        return () => clearInterval(userPolling);
     }, []);
 
     // Load history when user selected
@@ -106,6 +108,10 @@ export default function Chat() {
             setMessages(prev =>
                 prev.map(m => m.id === tempMsg.id ? { ...res.data, _sending: false } : m)
             );
+            // Update last message time for sorting
+            setUsers(prev => prev.map(u => 
+                u.id === selectedUser.id ? { ...u, last_message_at: new Date().toISOString() } : u
+            ));
         } catch (err) {
             console.error('Failed to send:', err);
             setMessages(prev =>
@@ -126,6 +132,10 @@ export default function Chat() {
     const handleSelectUser = (u) => {
         setSelectedUser(u);
         setMobileView('chat');
+        // Clear unread count locally
+        setUsers(prev => prev.map(user => 
+            user.id === u.id ? { ...user, unread_count: 0 } : user
+        ));
     };
 
     const handleBackToList = () => {
@@ -136,9 +146,13 @@ export default function Chat() {
         }
     };
 
-    const filteredUsers = users.filter(u =>
-        u.name?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredUsers = users
+        .filter(u => u.name?.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+            const dateA = new Date(a.last_message_at || 0);
+            const dateB = new Date(b.last_message_at || 0);
+            return dateB - dateA;
+        });
 
     const formatTime = (dateStr) => {
         const d = new Date(dateStr);
@@ -247,6 +261,11 @@ export default function Chat() {
                                             </div>
                                         </div>
                                         <div className="chat-user-meta">
+                                            {u.unread_count > 0 && !isActive && (
+                                                <div className="chat-unread-badge">
+                                                    {u.unread_count > 99 ? '99+' : u.unread_count}
+                                                </div>
+                                            )}
                                             <MoreVertical size={14} className="chat-user-more" />
                                         </div>
                                     </div>
@@ -591,6 +610,19 @@ export default function Chat() {
 
                 .chat-user-item:hover .chat-user-more {
                     opacity: 1;
+                }
+
+                .chat-unread-badge {
+                    background: #ef4444;
+                    color: white;
+                    font-size: 0.65rem;
+                    font-weight: 800;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    min-width: 18px;
+                    text-align: center;
+                    margin-bottom: 4px;
+                    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
                 }
 
                 /* ── Chat Main ── */

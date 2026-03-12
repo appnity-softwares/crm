@@ -208,7 +208,7 @@ func UpdateProject(c *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{}
+	updates := map[string]any{}
 	if input.Name != "" {
 		updates["name"] = input.Name
 	}

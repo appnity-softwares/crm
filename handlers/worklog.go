@@ -149,7 +149,7 @@ func UpdateWorkLog(c *gin.Context) {
 	oldHours := workLog.Hours
 	hasSubstantialChange := false
 
-	updates := map[string]interface{}{}
+	updates := map[string]any{}
 	if input.ProjectID != nil {
 		updates["project_id"] = input.ProjectID
 	}

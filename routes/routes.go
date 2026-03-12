@@ -81,6 +81,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			reports.POST("", handlers.CreateDailyReport)
 			reports.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllDailyReports)
 			reports.GET("/me", handlers.GetMyDailyReports)
+			reports.PUT("/:id", handlers.UpdateDailyReport)
 			reports.GET("/stats", middleware.RoleGuard("admin", "manager"), handlers.GetDailyReportStats)
 			reports.PUT("/:id/review", middleware.RoleGuard("admin"), handlers.ReviewDailyReport)
 		}

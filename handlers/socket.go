@@ -28,7 +28,7 @@ func InitSocket() {
 		fmt.Printf("User %s joined room %s\n", s.ID(), room)
 	})
 
-	server.OnEvent("/", "message", func(s socketio.Conn, msg map[string]interface{}) {
+	server.OnEvent("/", "message", func(s socketio.Conn, msg map[string]any) {
 		// Use a safer way to get the receiver_id
 		rid, ok := msg["receiver_id"]
 		if !ok {

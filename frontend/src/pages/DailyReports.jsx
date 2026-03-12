@@ -5,6 +5,7 @@ import { useToast } from '../components/ui/Toast';
 import { CheckCircle, Send, Plus, Edit2, X, Download } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import LogComparison from '../components/ui/LogComparison';
+import Modal from '../components/ui/Modal';
 import { exportToCSV } from '../utils/export';
 
 const KPI_TEMPLATES = {
@@ -113,7 +114,7 @@ export default function DailyReports() {
             };
 
             if (editing) {
-                // await dailyReportsAPI.update(editing, payload); // Assuming update exists or adding it
+                await dailyReportsAPI.update(editing, payload);
                 toast('Daily Report Refined!', 'success');
             } else {
                 await dailyReportsAPI.create(payload);

@@ -62,7 +62,7 @@ func InitializePayment(c *gin.Context) {
 
 	client := razorpay.NewClient(config.AppConfig.RazorpayKeyID, config.AppConfig.RazorpayKeySecret)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"amount":   int(invoice.Total * 100), // in paise
 		"currency": "INR",
 		"receipt":  invoice.InvoiceNumber,
