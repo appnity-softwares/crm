@@ -6,7 +6,7 @@ import { initFirebase, requestFCMToken, onForegroundMessage } from '../services/
 const NotificationContext = createContext();
 
 // VAPID key from Firebase Console → Cloud Messaging → Web Push certificates
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+const VAPID_KEY = "BEV3l-kuPShnLOgM8cS8OTVVoQOhDI3R8Ryv_A9aJ1tI48CwyIyADxRijSCcdvH0Ie04i_9yd1ENKG-uCmcBlOA";
 
 export function NotificationProvider({ children }) {
     const { user } = useAuth();

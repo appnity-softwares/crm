@@ -4,12 +4,12 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 // Firebase config — these are PUBLIC keys, safe to commit.
 // They only identify the project; the private service account key stays on the backend.
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'appnity-crm',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '985815704701',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+    apiKey: "AIzaSyDTbvjgJeDpqXIQEQBpOOBgHBTy5nCH2zA",
+    authDomain: "appnity-crm.firebaseapp.com",
+    projectId: "appnity-crm",
+    storageBucket: "appnity-crm.firebasestorage.app",
+    messagingSenderId: "985815704701",
+    appId: "1:985815704701:web:072f6a1677b84dd6dffd14",
 };
 
 let app = null;
