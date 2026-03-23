@@ -50,9 +50,16 @@ export async function requestFCMToken(vapidKey) {
 
         const swUrl = `/firebase-messaging-sw.js?apiKey=${firebaseConfig.apiKey}&authDomain=${firebaseConfig.authDomain}&projectId=${firebaseConfig.projectId}&storageBucket=${firebaseConfig.storageBucket}&messagingSenderId=${firebaseConfig.messagingSenderId}&appId=${firebaseConfig.appId}`;
 
+        // 1. Register the Service Worker
+        await navigator.serviceWorker.register(swUrl);
+        
+        // 2. Wait strictly until the Service Worker is fully active before proceeding
+        const registration = await navigator.serviceWorker.ready;
+
+        // 3. Request the Token
         const token = await getToken(messaging, {
             vapidKey,
-            serviceWorkerRegistration: await navigator.serviceWorker.register(swUrl),
+            serviceWorkerRegistration: registration,
         });
 
         console.log('📱 FCM token obtained');
