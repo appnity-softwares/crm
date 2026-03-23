@@ -5,13 +5,15 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
+const urlParams = new URLSearchParams(location.search);
+
 firebase.initializeApp({
-    apiKey: self.__FIREBASE_API_KEY || '',
-    authDomain: self.__FIREBASE_AUTH_DOMAIN || '',
-    projectId: self.__FIREBASE_PROJECT_ID || 'appnity-crm',
-    storageBucket: self.__FIREBASE_STORAGE_BUCKET || '',
-    messagingSenderId: self.__FIREBASE_MESSAGING_SENDER_ID || '985815704701',
-    appId: self.__FIREBASE_APP_ID || '',
+    apiKey: urlParams.get('apiKey') || '',
+    authDomain: urlParams.get('authDomain') || '',
+    projectId: urlParams.get('projectId') || 'appnity-crm',
+    storageBucket: urlParams.get('storageBucket') || '',
+    messagingSenderId: urlParams.get('messagingSenderId') || '985815704701',
+    appId: urlParams.get('appId') || '',
 });
 
 const messaging = firebase.messaging();
