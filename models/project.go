@@ -11,11 +11,16 @@ type Project struct {
 	ID              uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
 	Name            string         `gorm:"size:255;not null" json:"name" binding:"required"`
 	Description     string         `gorm:"type:text" json:"description"`
-	Status          string         `gorm:"size:50;not null;default:'planning'" json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
+	Status          string         `gorm:"size:50;not null;default:'planning'" json:"status" binding:"omitempty,oneof=planning active on_hold completed under_maintenance cancelled"`
 	Progress        int            `gorm:"default:0" json:"progress"`
 	PendingProgress *int           `gorm:"default:null" json:"pending_progress"`
-	PortalToken     string         `gorm:"size:100;uniqueIndex" json:"client_portal_token"`
-	StartDate       time.Time      `gorm:"type:date" json:"start_date"`
+	TotalValue      float64        `gorm:"default:0" json:"total_value"`
+	AmountPaid           float64        `gorm:"default:0" json:"amount_paid"`
+	SOW                  string         `gorm:"type:text" json:"sow"`
+	SOWAcceptedByClient  bool           `gorm:"default:false" json:"sow_accepted_by_client"`
+	SOWAcceptedByAdmin   bool           `gorm:"default:false" json:"sow_accepted_by_admin"`
+	PortalToken          string         `gorm:"size:100;uniqueIndex" json:"client_portal_token"`
+	StartDate            time.Time      `gorm:"type:date" json:"start_date"`
 	EndDate         *time.Time     `gorm:"type:date" json:"end_date"`
 	ClientID        *uuid.UUID     `gorm:"type:uuid;index" json:"client_id"`
 	Client          *User          `gorm:"foreignKey:ClientID" json:"client,omitempty"`

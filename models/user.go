@@ -13,7 +13,7 @@ type User struct {
 	Name        string         `gorm:"size:255;not null" json:"name" binding:"required"`
 	Email       string         `gorm:"size:255;uniqueIndex;not null" json:"email" binding:"required,email"`
 	Password    string         `gorm:"size:255;not null" json:"-"`
-	Role        string         `gorm:"size:50;not null;default:'prospect'" json:"role" binding:"required,oneof=admin manager employee client prospect"`
+	Role        string         `gorm:"size:50;not null;default:'prospect'" json:"role" binding:"required,oneof=admin manager employee client prospect trainee alumni"`
 	Department  string         `gorm:"size:255" json:"department"`
 	Designation string         `gorm:"size:255" json:"designation"`
 	Phone       string         `gorm:"size:20" json:"phone"`
@@ -21,6 +21,8 @@ type User struct {
 	Avatar      string         `gorm:"size:1000" json:"avatar"`
 	NavStyle    string         `gorm:"size:50;default:'both'" json:"nav_style"`
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
+	Company     string         `gorm:"size:255" json:"company"`
+	Notes       string         `gorm:"type:text" json:"notes"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`

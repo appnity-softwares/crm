@@ -32,8 +32,21 @@ func ApplyLeave(c *gin.Context) {
 		return
 	}
 
-	startDate, _ := time.Parse("2006-01-02", input.StartDate)
-	endDate, _ := time.Parse("2006-01-02", input.EndDate)
+	startDate, err := time.Parse("2006-01-02", input.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format, use YYYY-MM-DD"})
+		return
+	}
+	endDate, err := time.Parse("2006-01-02", input.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format, use YYYY-MM-DD"})
+		return
+	}
+
+	if endDate.Before(startDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "end_date must not be before start_date"})
+		return
+	}
 
 	leave := models.Leave{
 		UserID:    uid,
@@ -70,8 +83,20 @@ func GetAllLeaves(c *gin.Context) {
 		query = query.Where("status = ?", status)
 	}
 
-	query.Find(&leaves)
-	c.JSON(http.StatusOK, gin.H{"leaves": leaves})
+	// Pagination
+	page, limit := parsePagination(c)
+	offset := (page - 1) * limit
+
+	var total int64
+	query.Model(&models.Leave{}).Count(&total)
+
+	query.Offset(offset).Limit(limit).Find(&leaves)
+	c.JSON(http.StatusOK, gin.H{
+		"count":  total,
+		"page":   page,
+		"limit":  limit,
+		"leaves": leaves,
+	})
 }
 
 func ReviewLeave(c *gin.Context) {

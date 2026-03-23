@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,7 +15,10 @@ import (
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/handlers"
 	"github.com/pushp314/erp-crm/middleware"
+	"github.com/pushp314/erp-crm/models"
 	"github.com/pushp314/erp-crm/routes"
+	notif "github.com/pushp314/erp-crm/services/notification"
+	"github.com/pushp314/erp-crm/services/notification/channels"
 )
 
 func main() {
@@ -24,12 +28,23 @@ func main() {
 	// Connect to database and run migrations
 	database.Connect()
 
+	// Auto-migrate FCM token table
+	database.DB.AutoMigrate(&models.FCMToken{})
+
 	// Seed admin user and configs
 	database.SeedAdmin()
 	database.SeedConfigs()
 
 	// Initialize Socket.io
 	handlers.InitSocket()
+
+	// ─── Initialize Notification Service ──────────────────────
+	initNotificationService()
+
+	// Initialize Notification Preferences
+	ps := notif.NewPreferenceService()
+	// Seed preferences for all active users asynchronously so it doesn't block startup
+	go ps.SeedAllUsers()
 
 	// Start background tasks
 	handlers.StartAutoCheckoutTask()
@@ -40,14 +55,15 @@ func main() {
 	// Global Security Headers
 	r.Use(middleware.SecurityHeaders())
 
-	// Hardened CORS middleware
+	// ─── Hardened CORS middleware ─────────────────────────────
+	// Build allowed origins from environment or defaults
+	allowedOrigins := buildAllowedOrigins()
+
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		// In production, you should check 'origin' against a whitelist
-		if origin != "" {
+
+		if isOriginAllowed(origin, allowedOrigins) {
 			c.Header("Access-Control-Allow-Origin", origin)
-		} else if gin.Mode() != gin.ReleaseMode {
-			c.Header("Access-Control-Allow-Origin", "*")
 		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Requested-With")
@@ -73,14 +89,16 @@ func main() {
 	r.POST("/socket.io/*any", handlers.SocketCORS, handlers.SocketHandler)
 
 	// Register all routes
-	// Note: We'll manually inject rate limit for auth in SetupRoutes or here
 	routes.SetupRoutes(r, authLimiter)
 
 	// Start server with Graceful Shutdown support
 	port := config.AppConfig.Port
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: r,
+		Addr:         ":" + port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	// Initializing the server in a goroutine so that it won't block the graceful shutdown handling below
@@ -105,4 +123,62 @@ func main() {
 	}
 
 	log.Println("Server exiting")
+}
+
+// buildAllowedOrigins returns a set of allowed CORS origins
+func buildAllowedOrigins() map[string]bool {
+	allowed := map[string]bool{}
+
+	// Check for env-configured origins (comma-separated)
+	if envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); envOrigins != "" {
+		for _, o := range strings.Split(envOrigins, ",") {
+			allowed[strings.TrimSpace(o)] = true
+		}
+	}
+
+	// Always allow in development mode
+	if gin.Mode() != gin.ReleaseMode {
+		allowed["http://localhost:5173"] = true
+		allowed["http://localhost:3000"] = true
+		allowed["http://localhost:8080"] = true
+		allowed["http://127.0.0.1:5173"] = true
+		allowed["http://127.0.0.1:3000"] = true
+	}
+
+	return allowed
+}
+
+// isOriginAllowed checks if origin is in the whitelist
+func isOriginAllowed(origin string, allowed map[string]bool) bool {
+	if origin == "" {
+		return false
+	}
+	// In dev mode with empty whitelist, allow all
+	if gin.Mode() != gin.ReleaseMode && len(allowed) == 0 {
+		return true
+	}
+	// If whitelist is configured, enforce it
+	if len(allowed) > 0 {
+		return allowed[origin]
+	}
+	// In production with no configured origins, deny all cross-origin
+	return false
+}
+
+// initNotificationService sets up the multi-channel notification service.
+func initNotificationService() {
+	// 1. In-App channel (DB + Socket.io real-time)
+	inApp := channels.NewInAppChannel(handlers.SocketServer)
+
+	// 2. FCM channel (push notifications — gracefully disabled if no credentials)
+	fcm, err := channels.NewFCMChannel()
+	if err != nil {
+		log.Printf("⚠️  FCM initialization failed: %v — push notifications disabled", err)
+		// Still create the service with just in-app
+		notif.NewService(inApp)
+		return
+	}
+
+	notif.NewService(inApp, fcm)
+	log.Println("✅ Notification service initialized with channels: in_app, fcm")
 }

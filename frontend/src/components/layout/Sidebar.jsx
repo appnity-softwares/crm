@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
     LayoutDashboard, Users, Clock, FolderKanban, FileText,
-    DollarSign, Receipt, UserPlus, LogOut, User, Sun, Moon, Menu, X, ClipboardList, ShieldCheck, PieChart, MessageSquare, LifeBuoy
+    DollarSign, Receipt, UserPlus, LogOut, User, Sun, Moon, Menu, X, ClipboardList, ShieldCheck, PieChart, MessageSquare, LifeBuoy, BookOpen, GraduationCap, Briefcase
 } from 'lucide-react';
 
 const navStructure = [
@@ -17,8 +17,17 @@ const navStructure = [
     {
         section: 'People', items: [
             { to: '/employees', icon: Users, label: 'Employees', module: 'employees' },
+            { to: '/clients', icon: UserPlus, label: 'Clients', module: 'employees' },
+            { to: '/chat/permissions', icon: ShieldCheck, label: 'Chat Access', module: 'employees' },
             { to: '/attendance', icon: Clock, label: 'Attendance' },
             { to: '/leaves', icon: ClipboardList, label: 'Leaves' },
+        ]
+    },
+    {
+        section: 'Training', items: [
+            { to: '/training/courses', icon: BookOpen, label: 'Curricula/Courses', module: 'employees' },
+            { to: '/training/students', icon: GraduationCap, label: 'Trainees/Students', module: 'employees' },
+            { to: '/jobs', icon: Briefcase, label: 'Job Board', module: 'employees' },
         ]
     },
     {
@@ -31,6 +40,7 @@ const navStructure = [
     {
         section: 'Finance', items: [
             { to: '/finance-analytics', icon: PieChart, label: 'Analytics', module: 'finance' },
+            { to: '/income', icon: DollarSign, label: 'Income', module: 'finance' },
             { to: '/expenses', icon: Receipt, label: 'Expenses', module: 'expenses' },
             { to: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
             { to: '/invoices', icon: Receipt, label: 'Invoices', module: 'invoices' },

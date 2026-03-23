@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -45,11 +46,11 @@ func GetFinanceStats(c *gin.Context) {
 	var totalIncome float64
 	var totalExpense float64
 
-	// Total Paid Invoices
-	database.DB.Model(&models.Invoice{}).Where("status = ?", "paid").Select("SUM(total_amount)").Row().Scan(&totalIncome)
+	// Total Paid Invoices — use COALESCE to avoid NULL scan
+	database.DB.Model(&models.Invoice{}).Where("status = ?", "paid").Select("COALESCE(SUM(total_amount), 0)").Scan(&totalIncome)
 
 	// Total Expenses
-	database.DB.Model(&models.Expense{}).Select("SUM(amount)").Row().Scan(&totalExpense)
+	database.DB.Model(&models.Expense{}).Select("COALESCE(SUM(amount), 0)").Scan(&totalExpense)
 
 	// Simple GST estimation (assuming 18% GST in India for services)
 	gstIncome := totalIncome * 0.18
@@ -58,11 +59,26 @@ func GetFinanceStats(c *gin.Context) {
 
 	profit := totalIncome - totalExpense
 
-	// Monthly Breakdown for Profit/Loss
-	var chartData []struct {
+	// Monthly Breakdown for Profit/Loss (last 6 months)
+	type MonthlyData struct {
 		Month   string  `json:"month"`
 		Income  float64 `json:"income"`
 		Expense float64 `json:"expense"`
+	}
+	var chartData []MonthlyData
+	for i := 5; i >= 0; i-- {
+		start := time.Now().AddDate(0, -i, -time.Now().Day()+1).Truncate(24 * time.Hour)
+		end := start.AddDate(0, 1, -1)
+
+		var incSum, expSum float64
+		database.DB.Model(&models.Invoice{}).Where("status = ? AND updated_at BETWEEN ? AND ?", "paid", start, end).Select("COALESCE(SUM(total_amount), 0)").Scan(&incSum)
+		database.DB.Model(&models.Expense{}).Where("date BETWEEN ? AND ?", start, end).Select("COALESCE(SUM(amount), 0)").Scan(&expSum)
+
+		chartData = append(chartData, MonthlyData{
+			Month:   start.Format("Jan"),
+			Income:  incSum,
+			Expense: expSum,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{

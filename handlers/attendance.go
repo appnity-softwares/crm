@@ -128,6 +128,10 @@ func QRCheckIn(c *gin.Context) {
 		return
 	}
 
+	if isLate {
+		CreateNotification(uid, "warning", "Late Check-in Recorded", fmt.Sprintf("You checked in late today at %s. Please try to be on time.", now.Format("15:04")))
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message":    "QR Checked in successfully",
 		"attendance": attendance,
@@ -164,6 +168,10 @@ func CheckIn(c *gin.Context) {
 	if err := database.DB.Create(&attendance).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record check-in"})
 		return
+	}
+
+	if isLate {
+		CreateNotification(uid, "warning", "Late Attendance", fmt.Sprintf("You clocked in at %s. (Policy: 10:15 AM limit)", now.Format("15:04")))
 	}
 
 	c.JSON(http.StatusCreated, gin.H{

@@ -34,17 +34,20 @@ export function AuthProvider({ children }) {
 
     const isAdmin = user?.role === 'admin';
     const isManager = user?.role === 'manager';
+    const isClient = user?.role === 'client';
+    const isProspect = user?.role === 'prospect';
     const hasElevated = isAdmin || isManager;
+    const isExternal = isClient || isProspect;
 
     const canAccess = (moduleKey) => {
-        if (isAdmin) return true;
+        if (isAdmin || isManager) return true;
         if (!user) return false;
         const perms = user.permissions ? user.permissions.split(',') : [];
         return perms.includes(moduleKey);
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isManager, hasElevated, canAccess }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isManager, isClient, isProspect, hasElevated, isExternal, canAccess }}>
             {children}
         </AuthContext.Provider>
     );

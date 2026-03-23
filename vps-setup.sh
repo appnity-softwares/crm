@@ -73,10 +73,12 @@ sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
 echo "Generating Backend Environment Configuration..."
 JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 JWT_REFRESH=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+ADMIN_PWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%' | fold -w 20 | head -n 1)
 
 cat <<EOF > "$PROJECT_DIR/.env"
 # Server
 PORT=8084
+GIN_MODE=release
 
 # Database
 DB_HOST=127.0.0.1
@@ -88,7 +90,16 @@ DB_NAME=$DB_NAME
 # JWT
 JWT_SECRET=$JWT_SECRET
 JWT_REFRESH_SECRET=$JWT_REFRESH
+
+# CORS (comma-separated allowed origins)
+CORS_ALLOWED_ORIGINS=https://$FRONTEND_DOMAIN
+
+# Admin Seed
+ADMIN_SEED_PASSWORD=$ADMIN_PWD
+ADMIN_SEED_EMAIL=admin@appnity.cloud
 EOF
+
+echo "⚠️  ADMIN PASSWORD: $ADMIN_PWD — SAVE THIS AND CHANGE IT AFTER FIRST LOGIN"
 
 # 4. Backend Build & Service Setup
 echo "Building Go Backend..."
@@ -150,6 +161,8 @@ server {
     listen 80;
     server_name $BACKEND_DOMAIN;
 
+    client_max_body_size 10M;
+
     location / {
         proxy_pass http://127.0.0.1:8084;
         proxy_http_version 1.1;
@@ -159,9 +172,6 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        # Allow CORS preflight requests (if not handled natively in Go)
-        proxy_set_header Access-Control-Allow-Origin *;
     }
 }
 EOF

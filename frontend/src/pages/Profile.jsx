@@ -7,6 +7,7 @@ import { useToast } from '../components/ui/Toast';
 import { User, Mail, Shield, Phone, Building, Calendar, Edit3, Key, Loader2, Camera } from 'lucide-react';
 import { uploadToCloudinary } from '../services/cloudinary';
 import { userAPI } from '../services/api';
+import NotificationPreferences from '../components/NotificationPreferences';
 
 export default function Profile() {
     const { user, login } = useAuth();
@@ -186,6 +187,8 @@ export default function Profile() {
                             </div>
                         </div>
                     </div>
+
+                    <NotificationPreferences />
                 </div>
             </div>
 
@@ -247,15 +250,37 @@ export default function Profile() {
                                 style={{ background: 'var(--bg-body)' }}
                             />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 24 }}>
-                            <label>Phone Number</label>
-                            <input
-                                type="text"
-                                value={profileForm.phone}
-                                onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })}
-                                style={{ background: 'var(--bg-body)' }}
-                                placeholder="+91 XXXX XXXX"
-                            />
+                        <div className="form-grid">
+                            <div className="form-group">
+                                <label>Department</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.department}
+                                    onChange={e => setProfileForm({ ...profileForm, department: e.target.value })}
+                                    style={{ background: 'var(--bg-body)' }}
+                                    placeholder="Engineering"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Designation</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.designation}
+                                    onChange={e => setProfileForm({ ...profileForm, designation: e.target.value })}
+                                    style={{ background: 'var(--bg-body)' }}
+                                    placeholder="Senior Developer"
+                                />
+                            </div>
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label>Phone Number</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.phone}
+                                    onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })}
+                                    style={{ background: 'var(--bg-body)' }}
+                                    placeholder="+91 XXXX XXXX"
+                                />
+                            </div>
                         </div>
                         <div className="form-actions">
                             <button type="button" className="btn btn-secondary" onClick={() => setProfileModalOpen(false)}>Cancel</button>

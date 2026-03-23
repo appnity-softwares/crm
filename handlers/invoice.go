@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -238,4 +241,44 @@ func UpdateInvoiceStatus(c *gin.Context) {
 		"message": "Invoice status updated",
 		"invoice": invoice,
 	})
+}
+
+// GenerateMilestoneInvoice creates an invoice for a specific milestone
+func GenerateMilestoneInvoice(tx *gorm.DB, project models.Project, percentage int) error {
+	amount := project.TotalValue * (float64(percentage) / 100.0)
+	if amount <= 0 {
+		return nil
+	}
+
+	// Check for existing milestone invoice
+	var count int64
+	milestoneNote := fmt.Sprintf("%d%% Milestone Payment", percentage)
+	tx.Model(&models.Invoice{}).Where("project_id = ? AND notes = ?", project.ID, milestoneNote).Count(&count)
+	if count > 0 {
+		return nil
+	}
+
+	invoice := models.Invoice{
+		InvoiceNumber: fmt.Sprintf("INV-%d-%s", percentage, project.ID.String()[:8]),
+		ProjectID:     &project.ID,
+		ClientID:      project.ClientID,
+		Amount:        amount,
+		Tax:           0,
+		DueDate:       time.Now().AddDate(0, 0, 7),
+		Status:        "draft",
+		Notes:         milestoneNote,
+	}
+
+	if project.ClientID != nil {
+		var client models.User
+		if err := tx.First(&client, "id = ?", *project.ClientID).Error; err == nil {
+			invoice.ClientName = client.Name
+			invoice.ClientEmail = client.Email
+		}
+	} else {
+		invoice.ClientName = project.Name + " - Milestone " + strconv.Itoa(percentage) + "%"
+	}
+
+	invoice.CalculateTotal()
+	return tx.Create(&invoice).Error
 }

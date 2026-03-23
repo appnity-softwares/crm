@@ -1,43 +1,128 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { notificationAPI } from '../services/api';
 import { useAuth } from './AuthContext';
+import { initFirebase, requestFCMToken, onForegroundMessage } from '../services/firebase';
 
 const NotificationContext = createContext();
+
+// VAPID key from Firebase Console → Cloud Messaging → Web Push certificates
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 
 export function NotificationProvider({ children }) {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const notifiedIds = useRef(new Set());
+    const fcmInitialized = useRef(false);
+
+    // ── FCM Setup: Initialize Firebase & register device token ──
+    useEffect(() => {
+        if (!user || fcmInitialized.current) return;
+        if (!VAPID_KEY) {
+            console.info('ℹ️ VITE_FIREBASE_VAPID_KEY not set — push notifications disabled');
+            return;
+        }
+
+        fcmInitialized.current = true;
+        initFirebase();
+
+        (async () => {
+            try {
+                const token = await requestFCMToken(VAPID_KEY);
+                if (token) {
+                    await notificationAPI.saveToken(token, 'web');
+                    console.log('✅ FCM device token registered');
+                }
+            } catch (err) {
+                console.warn('FCM registration failed:', err);
+            }
+        })();
+    }, [user]);
+
+    // ── Listen for foreground FCM messages ──
+    useEffect(() => {
+        if (!user || !VAPID_KEY) return;
+
+        const unsubscribe = onForegroundMessage(({ title, body, data }) => {
+            // Show toast or in-app notification
+            showBrowserNotification({ title, message: body, type: data?.type });
+            // Refresh the notification list to pick up the new in-app notification
+            fetchNotifications();
+        });
+
+        return () => {
+            if (typeof unsubscribe === 'function') unsubscribe();
+        };
+    }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const requestBrowserPermission = useCallback(async () => {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "default") {
+            await Notification.requestPermission();
+        }
+    }, []);
+
+    const showBrowserNotification = useCallback((n) => {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        if (document.visibilityState === 'visible' && !window.location.pathname.startsWith('/chat')) {
+            // Optional: allow even if visible if user is not in chat module
+        } else if (document.visibilityState === 'visible') {
+            return;
+        }
+        
+        const title = n.title || "New Notification";
+        const options = {
+            body: n.message,
+            icon: "/favicon.ico",
+            badge: "/favicon.ico",
+            vibrate: [200, 100, 200],
+            tag: n.id,
+            requireInteraction: false
+        };
+
+        const notification = new Notification(title, options);
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+            if (n.url) window.location.href = n.url;
+            else if (n.type === 'message') window.location.href = '/chat';
+        };
+    }, []);
+
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
             setLoading(true);
             const { data } = await notificationAPI.getAll();
-            // Format for UI (convert snake_case to what UI expects if needed)
             const formatted = data.map(n => ({
                 ...n,
                 time: formatTime(n.created_at)
             }));
             setNotifications(formatted);
+
+            // Trigger Browser Notification for new unread notifications
+            data.forEach(n => {
+                if (!n.read && !notifiedIds.current.has(n.id)) {
+                    showBrowserNotification(n);
+                    notifiedIds.current.add(n.id);
+                }
+            });
         } catch (err) {
             console.error("Failed to fetch notifications:", err);
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, showBrowserNotification]);
 
     useEffect(() => {
+        requestBrowserPermission();
         fetchNotifications();
-        // Optional: poll every 2 minutes
-        const interval = setInterval(fetchNotifications, 120000);
+        const interval = setInterval(fetchNotifications, 30000);
         return () => clearInterval(interval);
-    }, [fetchNotifications]);
+    }, [fetchNotifications, requestBrowserPermission]);
 
-    const addNotification = useCallback(async (notif) => {
-        // For client-side triggered notifications that we want to persist,
-        // we'd need a POST /api/notifications. 
-        // But for now, let's just refresh list as most come from backend actions.
+    const addNotification = useCallback(async () => {
         fetchNotifications();
     }, [fetchNotifications]);
 

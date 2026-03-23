@@ -3,11 +3,10 @@ import { worklogAPI, projectAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { FileText, Plus, Edit2, Trash2, History, User } from 'lucide-react';
+import { History, Download, Plus, Edit2, Trash2, Eye, User } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import LogComparison from '../components/ui/LogComparison';
 import { exportToCSV } from '../utils/export';
-import { Download } from 'lucide-react';
 
 export default function WorkLogs() {
     const { hasElevated, isAdmin } = useAuth();
@@ -111,6 +110,9 @@ export default function WorkLogs() {
                         <History size={12} />
                     </button>
                 )}
+                <button className="btn btn-sm btn-secondary" onClick={() => setViewDetail(l)} title="View Detail">
+                    <Eye size={12} />
+                </button>
                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(l)}>
                     <Edit2 size={12} />
                 </button>
@@ -123,6 +125,13 @@ export default function WorkLogs() {
         )
     });
 
+    const [viewDetail, setViewDetail] = useState(null);
+    const [projectSearch, setProjectSearch] = useState('');
+
+    const filteredProjects = projects.filter(p => 
+        p.name.toLowerCase().includes(projectSearch.toLowerCase())
+    );
+
     return (
         <div>
             <div className="header">
@@ -134,7 +143,7 @@ export default function WorkLogs() {
                     <button className="btn btn-secondary" onClick={() => exportToCSV(logs, 'work_logs_report', ['user.name', 'date', 'project.name', 'hours', 'description', 'is_edited'])}>
                         <Download size={15} /> Export
                     </button>
-                    <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ project_id: '', date: new Date().toISOString().split('T')[0], hours: '', description: '' }); setShowModal(true); }}>
+                    <button className="btn btn-primary" onClick={() => { setProjectSearch(''); setEditing(null); setForm({ project_id: '', date: new Date().toISOString().split('T')[0], hours: '', description: '' }); setShowModal(true); }}>
                         <Plus size={15} /> Log Work
                     </button>
                 </div>
@@ -168,10 +177,25 @@ export default function WorkLogs() {
                                 <input type="number" step="0.5" min="0.5" max="24" required value={form.hours} onChange={e => setForm({ ...form, hours: e.target.value })} />
                             </div>
                             <div className="form-group full">
-                                <label>Project</label>
-                                <select value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}>
-                                    <option value="">— No Project —</option>
-                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                <label>Project (Search)</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Type to search project..." 
+                                    value={projectSearch} 
+                                    onChange={e => setProjectSearch(e.target.value)}
+                                    className="form-control"
+                                    style={{ marginBottom: 8 }}
+                                />
+                                <select 
+                                    value={form.project_id} 
+                                    onChange={e => {
+                                        setForm({ ...form, project_id: e.target.value });
+                                        const p = projects.find(proj => proj.id === e.target.value);
+                                        if (p && !projectSearch) setProjectSearch(p.name);
+                                    }}
+                                >
+                                    <option value="">— No Project / General —</option>
+                                    {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div className="form-group full">
@@ -230,6 +254,53 @@ export default function WorkLogs() {
                                     Initial submission
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {viewDetail && (
+                <Modal title="Work Log Detail" onClose={() => setViewDetail(null)} maxWidth="600px">
+                    <div style={{ padding: 20 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <div>
+                                <h3 style={{ margin: 0 }}>{viewDetail.user?.name}</h3>
+                                <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0' }}>{viewDetail.user?.email}</p>
+                            </div>
+                            <div className="badge blue" style={{ height: 'fit-content', padding: '8px 16px' }}>
+                                {viewDetail.hours} Hours Logged
+                            </div>
+                        </div>
+
+                        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+                            <div className="card" style={{ padding: 16, background: 'var(--bg-app)' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Date</label>
+                                <div style={{ fontWeight: 600 }}>{formatDate(viewDetail.date)}</div>
+                            </div>
+                            <div className="card" style={{ padding: 16, background: 'var(--bg-app)' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Project</label>
+                                <div style={{ fontWeight: 600, color: 'var(--primary-600)' }}>{viewDetail.project?.name || 'General Task'}</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 8 }}>Work Description</label>
+                            <div style={{ background: 'var(--bg-body)', padding: 16, borderRadius: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                {viewDetail.description}
+                            </div>
+                        </div>
+
+                        {viewDetail.is_edited && (
+                            <div style={{ marginTop: 20, textAlign: 'center' }}>
+                                <button className="btn btn-sm btn-secondary" onClick={() => { setViewingHistory(viewDetail); setViewDetail(null); }}>
+                                    <History size={12} style={{ marginRight: 6 }} /> View Edit History
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="form-actions" style={{ marginTop: 32 }}>
+                            <button className="btn btn-secondary" onClick={() => setViewDetail(null)}>Close</button>
+                            <button className="btn btn-primary" onClick={() => { handleEdit(viewDetail); setViewDetail(null); }}>Edit this Log</button>
                         </div>
                     </div>
                 </Modal>

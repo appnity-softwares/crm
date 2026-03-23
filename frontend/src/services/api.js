@@ -86,6 +86,7 @@ export const dailyReportsAPI = {
     getStats: () => api.get('/reports/stats'),
     update: (id, data) => api.put(`/reports/${id}`, data),
     review: (id, data) => api.put(`/reports/${id}/review`, data),
+    delete: (id) => api.delete(`/reports/${id}`),
 };
 
 // ── Projects ──
@@ -94,10 +95,17 @@ export const projectAPI = {
     getAll: (params) => api.get('/projects', { params }),
     getOne: (id) => api.get(`/projects/${id}`),
     update: (id, data) => api.put(`/projects/${id}`, data),
+    delete: (id) => api.delete(`/projects/${id}`),
     assignMember: (id, data) => api.post(`/projects/${id}/assign`, data),
     transferMember: (id, data) => api.post(`/projects/${id}/transfer`, data),
     approveUpdate: (id, data) => api.put(`/projects/${id}/approve`, data),
     removeMember: (id, uid) => api.delete(`/projects/${id}/members/${uid}`),
+    
+    // Updates for clients
+    getUpdates: (pid) => api.get(`/projects/${pid}/updates`),
+    postUpdate: (data) => api.post(`/projects/updates`, data),
+    getComments: (uid) => api.get(`/projects/updates/${uid}/comments`),
+    postComment: (data) => api.post(`/projects/updates/comments`, data),
 };
 
 // ── Payroll ──
@@ -127,7 +135,9 @@ export const leadAPI = {
     update: (id, data) => api.put(`/leads/${id}`, data),
     remove: (id) => api.delete(`/leads/${id}`),
     submitRequirement: (data) => api.post('/leads/requirement', data),
-    convertToClient: (id) => api.post(`/leads/${id}/convert`)
+    getMyProfile: () => api.get('/leads/my-profile'),
+    convertToClient: (id, data) => api.post(`/leads/${id}/convert`, data),
+    acceptSOW: (id) => api.post(`/leads/${id}/sow/accept`),
 };
 
 // ── Dashboard ──
@@ -147,6 +157,11 @@ export const notificationAPI = {
     markRead: (id) => api.put(`/notifications/${id}/read`),
     markAllRead: () => api.put('/notifications/read-all'),
     remove: (id) => api.delete(`/notifications/${id}`),
+    saveToken: (token, device = 'web') => api.post('/notifications/token', { token, device }),
+    removeToken: (token) => api.delete('/notifications/token', { data: { token } }),
+    getTypes: () => api.get('/notifications/types'),
+    getPreferences: () => api.get('/notifications/preferences'),
+    updatePreferences: (updates) => api.put('/notifications/preferences', { updates }),
 };
 
 // ── Expenses ──
@@ -160,6 +175,7 @@ export const expenseAPI = {
 export const balanceAPI = {
     get: () => api.get('/finance/balance'),
     getStats: () => api.get('/finance/stats'),
+    getAnalytics: () => api.get('/finance/analytics'),
     updateManual: (data) => api.post('/finance/balance/manual', data),
 };
 
@@ -173,6 +189,8 @@ export const portalAPI = {
     verifyPayment: (token, data) => api.post(`/portal/${token}/verify`, data),
     createTicket: (token, data) => api.post(`/portal/${token}/tickets`, data),
     getTickets: (token) => api.get(`/portal/${token}/tickets`),
+    postComment: (token, data) => api.post(`/portal/${token}/comments`, data),
+    acceptSOW: (token) => api.post(`/portal/${token}/sow/accept`),
 };
 
 export const ticketAPI = {
@@ -197,6 +215,8 @@ export const chatAPI = {
     getConversations: () => api.get('/chat/conversations'),
     getHistory: (uid) => api.get(`/chat/history/${uid}`),
     send: (data) => api.post('/chat/send', data),
+    edit: (mid, data) => api.put(`/chat/${mid}`, data),
+    remove: (mid) => api.delete(`/chat/${mid}`),
 };
 
 export const taskAPI = {
@@ -206,4 +226,47 @@ export const taskAPI = {
     remove: (id) => api.delete(`/projects/tasks/${id}`),
 };
 
-export { api, dailyReportsAPI as reportAPI, balanceAPI as financeAPI };
+export const incomeAPI = {
+    getAll: (params) => api.get('/income', { params }),
+    create: (data) => api.post('/income', data),
+    update: (id, data) => api.put(`/income/${id}`, data),
+    delete: (id) => api.delete(`/income/${id}`),
+};
+
+export const clientAPI = {
+    getAll: (params) => api.get('/clients', { params }),
+    getOne: (id) => api.get(`/clients/${id}`),
+    create: (data) => api.post('/clients', data),
+    update: (id, data) => api.put(`/clients/${id}`, data),
+    delete: (id) => api.delete(`/clients/${id}`),
+};
+
+export const chatPermissionAPI = {
+    getAll: () => api.get('/chat/permissions'),
+    request: (data) => api.post('/chat/permissions/request', data),
+    update: (id, data) => api.put(`/chat/permissions/${id}`, data),
+};
+
+export const trainingAPI = {
+    createCourse: (data) => api.post('/training/courses', data),
+    getCourses: () => api.get('/training/courses'),
+    updateCourse: (id, data) => api.put(`/training/courses/${id}`, data),
+    enroll: (data) => api.post('/training/enrollments', data),
+    getEnrollments: (params) => api.get('/training/enrollments', { params }),
+    updateEnrollment: (id, data) => api.put(`/training/enrollments/${id}`, data),
+    addPayment: (id, data) => api.post(`/training/enrollments/${id}/payments`, data),
+    getMyEnrollments: () => api.get('/training/enrollments/me'),
+};
+
+const jobsAPI = {
+    get: () => api.get('/jobs'),
+    create: (data) => api.post('/jobs', data),
+    delete: (id) => api.delete(`/jobs/${id}`),
+};
+
+export {
+    api,
+    dailyReportsAPI as reportAPI,
+    balanceAPI as financeAPI,
+    jobsAPI
+};

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
+import GlobalHelpButton from '../components/ui/GlobalHelpButton';
 
 export default function Login() {
     const { user, login } = useAuth();
@@ -69,6 +70,7 @@ export default function Login() {
                     </div>
                 </form>
             </div>
+            <GlobalHelpButton />
         </div>
     );
 }

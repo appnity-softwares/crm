@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { projectAPI } from '../services/api';
+import { projectAPI, employeeAPI, clientAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { Plus, Edit2, Copy, ExternalLink, LayoutGrid } from 'lucide-react';
+import { Plus, Edit2, Copy, LayoutGrid, User } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,17 +12,22 @@ export default function Projects() {
     const navigate = useNavigate();
     const toast = useToast();
     const [projects, setProjects] = useState([]);
+    const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', description: '', status: 'planning', start_date: '', end_date: '', progress: 0 });
+    const [form, setForm] = useState({ name: '', description: '', status: 'planning', start_date: '', end_date: '', progress: 0, client_id: '', total_value: 0, amount_paid: 0 });
     const [saving, setSaving] = useState(false);
 
     const load = async () => {
         setLoading(true);
         try {
-            const { data } = await projectAPI.getAll();
-            setProjects(data.projects || []);
+            const [pRes, cRes] = await Promise.all([
+                projectAPI.getAll(),
+                hasElevated ? clientAPI.getAll() : Promise.resolve({ data: { clients: [] } })
+            ]);
+            setProjects(pRes.data.projects || []);
+            setClients(cRes.data.clients || []);
         } catch { } finally { setLoading(false); }
     };
 
@@ -41,7 +46,7 @@ export default function Projects() {
             }
             setShowModal(false);
             setEditing(null);
-            setForm({ name: '', description: '', status: 'planning', start_date: '', end_date: '', progress: 0 });
+            setForm({ name: '', description: '', status: 'planning', start_date: '', end_date: '', progress: 0, client_id: '', total_value: 0, amount_paid: 0 });
             load();
         } catch (err) {
             toast(err.response?.data?.error || 'Failed to save', 'error');
@@ -56,7 +61,10 @@ export default function Projects() {
             status: p.status,
             start_date: p.start_date ? p.start_date.split('T')[0] : '',
             end_date: p.end_date ? p.end_date.split('T')[0] : '',
-            progress: p.progress || 0
+            progress: p.progress || 0,
+            client_id: p.client_id || '',
+            total_value: p.total_value || 0,
+            amount_paid: p.amount_paid || 0
         });
         setShowModal(true);
     };
@@ -87,12 +95,23 @@ export default function Projects() {
                 </div>
             )
         },
-        { header: 'Client', accessor: 'client_name' },
+        { 
+            header: 'Client', 
+            accessor: r => r.client?.name || '—',
+            render: r => r.client ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--amber-100)', color: 'var(--amber-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700 }}>
+                        <User size={12} />
+                    </div>
+                    <span>{r.client.name}</span>
+                </div>
+            ) : <span style={{ color: 'var(--text-muted)' }}>No Client</span>
+        },
         {
             header: 'Status',
             accessor: 'status',
             render: (r) => {
-                const map = { planning: 'blue', active: 'green', on_hold: 'amber', completed: 'purple' };
+                const map = { planning: 'blue', active: 'green', on_hold: 'amber', completed: 'purple', under_maintenance: 'red', cancelled: 'gray' };
                 return <span className={`badge ${map[r.status] || 'gray'}`}>{r.status?.replace('_', ' ')}</span>;
             }
         },
@@ -205,6 +224,15 @@ export default function Projects() {
                                     <option value="active">Active</option>
                                     <option value="on_hold">On Hold</option>
                                     <option value="completed">Completed</option>
+                                    <option value="under_maintenance">Under Maintenance</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Client Assignment</label>
+                                <select disabled={!hasElevated} value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
+                                    <option value="">Select a client...</option>
+                                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
@@ -219,6 +247,18 @@ export default function Projects() {
                                 <label>Progress ({form.progress}%)</label>
                                 <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: parseInt(e.target.value) })} style={{ width: '100%' }} />
                             </div>
+                            {user?.role === 'admin' && (
+                                <>
+                                    <div className="form-group">
+                                        <label>Total Contract Value ($)</label>
+                                        <input type="number" value={form.total_value} onChange={e => setForm({ ...form, total_value: parseFloat(e.target.value) })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Amount Paid ($)</label>
+                                        <input type="number" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: parseFloat(e.target.value) })} />
+                                    </div>
+                                </>
+                            )}
                         </div>
                         <div className="form-actions">
                             <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

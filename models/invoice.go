@@ -13,6 +13,8 @@ type Invoice struct {
 	InvoiceNumber string         `gorm:"size:50;uniqueIndex;not null" json:"invoice_number"`
 	ClientName    string         `gorm:"size:255;not null" json:"client_name" binding:"required"`
 	ClientEmail   string         `gorm:"size:255" json:"client_email" binding:"omitempty,email"`
+	ClientID      *uuid.UUID     `gorm:"type:uuid;index" json:"client_id"`
+	Client        *User          `gorm:"foreignKey:ClientID" json:"client,omitempty"`
 	ProjectID     *uuid.UUID     `gorm:"type:uuid;index" json:"project_id"`
 	Project       *Project       `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
 	Amount        float64        `gorm:"type:decimal(12,2);not null" json:"amount" binding:"required"`
@@ -22,6 +24,7 @@ type Invoice struct {
 	Status        string         `gorm:"size:50;not null;default:'draft'" json:"status" binding:"omitempty,oneof=draft sent paid overdue partial"`
 	DueDate       time.Time      `gorm:"type:date;not null" json:"due_date"`
 	IssuedAt      time.Time      `gorm:"not null" json:"issued_at"`
+	Notes         string         `gorm:"type:text" json:"notes"`
 	SecureToken   string         `gorm:"size:100;uniqueIndex" json:"secure_token"`
 	RazorpayOrder string         `gorm:"size:100" json:"razorpay_order_id"`
 	CreatedAt     time.Time      `json:"created_at"`

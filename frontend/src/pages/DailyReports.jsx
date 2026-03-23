@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { dailyReportsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
-import { CheckCircle, Send, Plus, Edit2, X, Download } from 'lucide-react';
+import { CheckCircle, Send, Plus, Edit2, X, Download, Eye } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import LogComparison from '../components/ui/LogComparison';
 import Modal from '../components/ui/Modal';
@@ -45,7 +45,7 @@ const KPI_TEMPLATES = {
 };
 
 export default function DailyReports() {
-    const { hasElevated, isAdmin } = useAuth();
+    const { user, hasElevated, isAdmin } = useAuth();
     const toast = useToast();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -202,24 +202,30 @@ export default function DailyReports() {
         { header: 'Admin Remark', accessor: 'admin_remark', render: r => <span style={{ fontSize: '0.85rem', color: 'var(--primary-600)' }}>{r.admin_remark || '—'}</span> }
     ];
 
-    if (isAdmin) {
-        columns.push({
-            header: 'Actions',
-            key: 'actions',
-            render: (r) => (
-                <div style={{ display: 'flex', gap: 6 }}>
+    const actionsColumn = {
+        header: 'Actions',
+        key: 'actions',
+        render: (r) => (
+            <div style={{ display: 'flex', gap: 6 }}>
+                <button className="btn btn-sm btn-secondary" onClick={() => { setViewDetail(r); }} title="View Details">
+                    <Eye size={12} />
+                </button>
+                {(isAdmin || r.user_id === user?.id) && (
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(r)} title="Edit">
                         <Edit2 size={12} />
                     </button>
-                    {r.status === 'submitted' && (
-                        <button className="btn btn-sm btn-primary" onClick={() => { setReviewing(r); setReviewForm({ status: 'approved', admin_remark: '' }); }} title="Review">
-                            <CheckCircle size={12} />
-                        </button>
-                    )}
-                </div>
-            )
-        });
-    }
+                )}
+                {isAdmin && r.status === 'submitted' && (
+                    <button className="btn btn-sm btn-primary" onClick={() => { setReviewing(r); setReviewForm({ status: 'approved', admin_remark: '' }); }} title="Review">
+                        <CheckCircle size={12} />
+                    </button>
+                )}
+            </div>
+        )
+    };
+    columns.push(actionsColumn);
+
+    const [viewDetail, setViewDetail] = useState(null);
 
     return (
         <div>
@@ -391,6 +397,67 @@ export default function DailyReports() {
                             </button>
                         </div>
                     </form>
+                </Modal>
+            )}
+            {viewDetail && (
+                <Modal title="Report Details" onClose={() => setViewDetail(null)} maxWidth="800px">
+                    <div style={{ padding: '20px' }} className="detail-modal-content">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
+                            <div>
+                                <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-700)', marginBottom: 5 }}>{viewDetail.user?.name}</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Submitted on {new Date(viewDetail.date).toLocaleDateString()}</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <span className={`badge ${viewDetail.status === 'approved' ? 'green' : viewDetail.status === 'rejected' ? 'red' : 'blue'}`} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
+                                    {viewDetail.status.toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'var(--bg-app)', padding: 20, borderRadius: 12, marginBottom: 20, border: '1px solid var(--border)' }}>
+                            <h4 style={{ marginBottom: 15, color: 'var(--primary)', borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+                                Role Focus: {KPI_TEMPLATES[parseMetrics(viewDetail.metrics).role_type]?.name || parseMetrics(viewDetail.metrics).role_type}
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                                {Object.entries(parseMetrics(viewDetail.metrics)).filter(([k]) => k !== 'role_type').map(([k, v]) => (
+                                    <div key={k}>
+                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{k.replace(/_/g, ' ')}</label>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)', marginTop: 4 }}>
+                                            {typeof v === 'boolean' ? (v ? '✅ Yes' : '❌ No') : (v || '—')}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: 20 }}>
+                            <h4 style={{ marginBottom: 10, fontSize: '1rem' }}>Employee Notes</h4>
+                            <div style={{ padding: 15, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-main)', lineHeight: 1.6 }}>
+                                {viewDetail.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes provided.</span>}
+                            </div>
+                        </div>
+
+                        {viewDetail.admin_remark && (
+                            <div style={{ marginBottom: 20 }}>
+                                <h4 style={{ marginBottom: 10, fontSize: '1rem', color: 'var(--primary-600)' }}>Admin Feedback</h4>
+                                <div style={{ padding: 15, background: 'rgba(99, 102, 241, 0.05)', border: '1px solid var(--primary-200)', borderRadius: 8, color: 'var(--primary-800)' }}>
+                                    {viewDetail.admin_remark}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="modal-footer" style={{ marginTop: 30, display: 'flex', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 20, flexWrap: 'wrap', width: '100%', boxSizing: 'border-box', justifyContent: 'flex-start' }}>
+                            {isAdmin && viewDetail.status === 'submitted' && (
+                                <button className="btn btn-primary" onClick={() => { setReviewing(viewDetail); setViewDetail(null); }}>
+                                    <CheckCircle size={16} /> Approve / Review Now
+                                </button>
+                            )}
+                            <button className="btn btn-secondary" onClick={() => { handleEdit(viewDetail); setViewDetail(null); }}>
+                                <Edit2 size={16} /> Edit Report
+                            </button>
+                            <button className="btn btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => setViewDetail(null)}>Close Window</button>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </div>

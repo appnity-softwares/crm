@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { portalAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { CheckCircle, Clock, ExternalLink, CreditCard, Layout, FileText, ArrowRight, LifeBuoy } from 'lucide-react';
+import { CheckCircle, Clock, ExternalLink, CreditCard, Layout, FileText, ArrowRight, LifeBuoy, Activity } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import GlobalHelpButton from '../components/ui/GlobalHelpButton';
 
 export default function ClientPortal() {
     const { token } = useParams();
@@ -15,6 +16,7 @@ export default function ClientPortal() {
     const [showTicketModal, setShowTicketModal] = useState(false);
     const [ticketForm, setTicketForm] = useState({ subject: '', description: '', priority: 'medium' });
     const [savingTicket, setSavingTicket] = useState(false);
+    const [agreed, setAgreed] = useState(false);
 
     const load = async () => {
         try {
@@ -106,33 +108,153 @@ export default function ClientPortal() {
             <div className="portal-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 30 }}>
                 <div className="portal-main">
                     {project && (
-                        <div className="card" style={{ marginBottom: 30 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                <div>
-                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <Layout size={20} className="text-primary" />
-                                        Project: {project.name}
-                                    </h3>
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{project.description}</p>
+                        <>
+                            <div className="card" style={{ marginBottom: 30 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                    <div>
+                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <Layout size={20} className="text-primary" />
+                                            Project: {project.name}
+                                        </h3>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{project.description}</p>
+                                    </div>
+                                    <div className="badge blue">{project.status}</div>
                                 </div>
-                                <div className="badge blue">{project.status}</div>
+
+                                <div className="progress-section">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                                        <span style={{ fontWeight: 600 }}>Development Progress</span>
+                                        <span style={{ fontWeight: 800, color: 'var(--primary-600)' }}>{project.progress || 0}%</span>
+                                    </div>
+                                    <div style={{ height: 12, background: 'var(--bg-hover)', borderRadius: 10, overflow: 'hidden' }}>
+                                        <div style={{
+                                            height: '100%',
+                                            width: `${project.progress || 0}%`,
+                                            background: 'linear-gradient(90deg, var(--primary-500), var(--primary-600))',
+                                            transition: 'width 1s ease-out'
+                                        }} />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="progress-section">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                                    <span style={{ fontWeight: 600 }}>Development Progress</span>
-                                    <span style={{ fontWeight: 800, color: 'var(--primary-600)' }}>{project.progress || 0}%</span>
+                            <div className="card" style={{ marginBottom: 30, border: '1px solid var(--amber-200)', background: 'var(--amber-50)' }}>
+                                <h3 style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <FileText size={20} style={{ color: 'var(--amber-600)' }} />
+                                    Project Agreement (SOW)
+                                </h3>
+                                <div style={{ 
+                                    padding: 20, 
+                                    background: 'white', 
+                                    borderRadius: 12, 
+                                    fontSize: '0.95rem',
+                                    lineHeight: 1.6,
+                                    whiteSpace: 'pre-wrap',
+                                    maxHeight: 300,
+                                    overflowY: 'auto',
+                                    border: '1px solid var(--border)',
+                                    marginBottom: 20
+                                }}>
+                                    {project.sow || "No agreement document uploaded yet."}
                                 </div>
-                                <div style={{ height: 12, background: 'var(--bg-hover)', borderRadius: 10, overflow: 'hidden' }}>
-                                    <div style={{
-                                        height: '100%',
-                                        width: `${project.progress || 0}%`,
-                                        background: 'linear-gradient(90deg, var(--primary-500), var(--primary-600))',
-                                        transition: 'width 1s ease-out'
-                                    }} />
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
+                                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: project.sow_accepted_by_client ? 'var(--green-600)' : 'var(--amber-600)' }}>
+                                            {project.sow_accepted_by_client ? <CheckCircle size={16} /> : <Clock size={16} />}
+                                            {project.sow_accepted_by_client ? "Accepted by You" : "Awaiting Your Acceptance"}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: project.sow_accepted_by_admin ? 'var(--green-600)' : 'var(--amber-600)' }}>
+                                            {project.sow_accepted_by_admin ? <CheckCircle size={16} /> : <Clock size={16} />}
+                                            {project.sow_accepted_by_admin ? "Approved by Admin" : "Awaiting Admin Approval"}
+                                        </div>
+                                    </div>
+                                    {!project.sow_accepted_by_client && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                                                <input id="sow-agree" type="checkbox" required style={{ width: 16, height: 16, cursor: 'pointer' }} onChange={(e) => setAgreed(e.target.checked)} />
+                                                <label htmlFor="sow-agree" style={{ cursor: 'pointer' }}>I agree to the terms and conditions</label>
+                                            </div>
+                                            <button 
+                                                className="btn btn-primary"
+                                                disabled={!agreed}
+                                                onClick={async () => {
+                                                    try {
+                                                        await portalAPI.acceptSOW(token);
+                                                        toast("SOW Accepted!", "success");
+                                                        load();
+                                                    } catch { toast("Failed to accept SOW", "error"); }
+                                                }}
+                                            >
+                                                Accept & Proceed
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
+
+                            <div className="card" style={{ marginBottom: 30 }}>
+                                <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Activity size={20} className="text-primary" />
+                                    Project Updates & Timeline
+                                </h3>
+                                <div className="timeline" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {(data.updates || []).length === 0 ? (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No updates posted yet.</p>
+                                    ) : (
+                                        data.updates.map(update => (
+                                            <div key={update.id} className="timeline-item" style={{ padding: 20, background: 'var(--bg-hover)', borderRadius: 12, borderLeft: '4px solid var(--primary-500)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                    <h4 style={{ fontWeight: 700 }}>{update.title}</h4>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(update.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', marginBottom: 15 }}>{update.description}</p>
+                                                
+                                                {update.link && (
+                                                    <a href={update.link} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary" style={{ marginBottom: 15, display: 'inline-flex', gap: 6, fontSize: '0.8rem', background: 'white' }}>
+                                                        <ExternalLink size={14} /> View Deliverable
+                                                    </a>
+                                                )}
+
+                                                <div className="comments-section" style={{ borderTop: '1px solid var(--border)', paddingTop: 15, marginTop: 5 }}>
+                                                    <h5 style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 10, color: 'var(--text-muted)' }}>Team Discussion</h5>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
+                                                        {(update.comments || []).map(comment => (
+                                                            <div key={comment.id} style={{ padding: '8px 12px', background: 'white', borderRadius: 8, border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                                    <span style={{ fontWeight: 700, color: 'var(--primary-700)' }}>{comment.user?.name}</span>
+                                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(comment.created_at).toLocaleTimeString()}</span>
+                                                                </div>
+                                                                <div>{comment.content}</div>
+                                                            </div>
+                                                        ))}
+                                                        {(update.comments || []).length === 0 && <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-muted)' }}>No comments yet.</p>}
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', gap: 10 }}>
+                                                        <input 
+                                                            className="form-control" 
+                                                            style={{ height: 36, fontSize: '0.85rem' }} 
+                                                            placeholder="Write a comment..." 
+                                                            onKeyDown={async (e) => {
+                                                                if (e.key === 'Enter' && e.target.value.trim()) {
+                                                                    try {
+                                                                        const text = e.target.value;
+                                                                        e.target.value = '';
+                                                                        // Since it's a portal, we might need a special API or just use the project update comments API if it allows portal tokens
+                                                                        await portalAPI.postComment(token, { update_id: update.id, content: text });
+                                                                        toast("Comment posted", "success");
+                                                                        load(); // Refresh data
+                                                                    } catch { toast("Failed to post comment", "error"); }
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
                     )}
 
                     <div className="card">
@@ -263,6 +385,7 @@ export default function ClientPortal() {
                     </form>
                 </Modal>
             )}
+            <GlobalHelpButton />
         </div>
     );
 }

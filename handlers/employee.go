@@ -13,7 +13,7 @@ type CreateEmployeeInput struct {
 	Name        string `json:"name" binding:"required"`
 	Email       string `json:"email" binding:"required,email"`
 	Password    string `json:"password" binding:"required,min=6"`
-	Role        string `json:"role" binding:"required,oneof=admin manager employee client"`
+	Role        string `json:"role" binding:"required,oneof=admin manager employee client prospect trainee alumni"`
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
 	Phone       string `json:"phone"`
@@ -21,7 +21,7 @@ type CreateEmployeeInput struct {
 
 type UpdateEmployeeInput struct {
 	Name        string `json:"name"`
-	Role        string `json:"role" binding:"omitempty,oneof=admin manager employee client"`
+	Role        string `json:"role" binding:"omitempty,oneof=admin manager employee client prospect trainee alumni"`
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
 	Phone       string `json:"phone"`
@@ -208,10 +208,12 @@ func UpdateProfile(c *gin.Context) {
 	uid := userID.(uuid.UUID)
 
 	var input struct {
-		Name     string `json:"name"`
-		Phone    string `json:"phone"`
-		Avatar   string `json:"avatar"`
-		NavStyle string `json:"nav_style"`
+		Name        string `json:"name"`
+		Phone       string `json:"phone"`
+		Avatar      string `json:"avatar"`
+		NavStyle    string `json:"nav_style"`
+		Department  string `json:"department"`
+		Designation string `json:"designation"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -237,6 +239,12 @@ func UpdateProfile(c *gin.Context) {
 	}
 	if input.NavStyle != "" {
 		updates["nav_style"] = input.NavStyle
+	}
+	if input.Department != "" {
+		updates["department"] = input.Department
+	}
+	if input.Designation != "" {
+		updates["designation"] = input.Designation
 	}
 
 	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {

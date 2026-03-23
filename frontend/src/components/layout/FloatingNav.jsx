@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Clock, FolderKanban, FileText,
-    DollarSign, Receipt, UserPlus, LogOut, User, Menu, X, ClipboardList, ShieldCheck, ChevronRight, ChevronLeft, Eye, EyeOff
+    DollarSign, Receipt, UserPlus, LogOut, User, Menu, X, ClipboardList, ShieldCheck, ChevronRight, ChevronLeft, Eye, EyeOff, BookOpen, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,6 +17,8 @@ const combinedNav = [
     { to: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
     { to: '/invoices', icon: Receipt, label: 'Invoices', module: 'invoices' },
     { to: '/leads', icon: UserPlus, label: 'Leads', module: 'leads' },
+    { to: '/training/courses', icon: BookOpen, label: 'Curricula', module: 'employees' },
+    { to: '/training/students', icon: GraduationCap, label: 'Trainees', module: 'employees' },
     { to: '/role-access', icon: ShieldCheck, label: 'Role Access', module: 'role-access' },
     { to: '/profile', icon: User, label: 'Profile' },
 ];

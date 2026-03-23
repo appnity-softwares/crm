@@ -9,9 +9,15 @@ import Modal from '../components/ui/Modal';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+import { Navigate } from 'react-router-dom';
+
 export default function Dashboard() {
     const { user, hasElevated } = useAuth();
     const { dark } = useTheme();
+
+    if (user?.role === 'prospect') return <Navigate to="/prospect-dashboard" replace />;
+    if (user?.role === 'client') return <Navigate to="/client-dashboard" replace />;
+    if (user?.role === 'trainee' || user?.role === 'alumni') return <Navigate to="/trainee-dashboard" replace />;
 
     const { data: statsData, loading: statsLoading } = useApi(dashboardAPI.getStats);
     const { data: balanceData, loading: balanceLoading, refresh: refreshBalance } = useApi(balanceAPI.get);
@@ -327,25 +333,55 @@ export default function Dashboard() {
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Company</th>
                                     <th>Source</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {statsData?.recent_leads?.map(lead => (
+                                {statsData?.recent_leads?.slice(0, 5).map(lead => (
                                     <tr key={lead.id}>
                                         <td style={{ fontWeight: 600 }}>{lead.name}</td>
-                                        <td>{lead.company}</td>
                                         <td><span className="badge gray">{lead.source}</span></td>
                                         <td><span className={`badge ${lead.status === 'won' ? 'green' : lead.status === 'lost' ? 'red' : 'blue'}`}>{lead.status}</span></td>
                                     </tr>
                                 ))}
-                                {!statsData?.recent_leads?.length && <tr><td colSpan={4} className="text-center">No recent leads found.</td></tr>}
+                                {!statsData?.recent_leads?.length && <tr><td colSpan={3} className="text-center">No recent leads found.</td></tr>}
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                {user?.role === 'admin' && (
+                    <div className="card">
+                        <div className="card-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <DollarSign size={18} />
+                                Recent Income
+                            </h3>
+                        </div>
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Source</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {statsData?.recent_income?.map(inc => (
+                                        <tr key={inc.id}>
+                                            <td style={{ fontWeight: 600 }}>{inc.source}</td>
+                                            <td style={{ color: 'var(--green-600)', fontWeight: 700 }}>₹{inc.amount.toLocaleString()}</td>
+                                            <td style={{ fontSize: '0.8rem' }}>{new Date(inc.date).toLocaleDateString()}</td>
+                                        </tr>
+                                    ))}
+                                    {!statsData?.recent_income?.length && <tr><td colSpan={3} className="text-center">No recent income found.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 <div className="card">
                     <div className="card-header">

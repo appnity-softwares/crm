@@ -57,29 +57,83 @@ func GetAllDailyReports(c *gin.Context) {
 		query = query.Where("date <= ?", to)
 	}
 
-	if err := query.Order("created_at DESC").Find(&reports).Error; err != nil {
+	// Pagination
+	page, limit := parsePagination(c)
+	offset := (page - 1) * limit
+
+	var total int64
+	query.Model(&models.DailyReport{}).Count(&total)
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&reports).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch reports"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"reports": reports})
+	c.JSON(http.StatusOK, gin.H{
+		"count":   total,
+		"page":    page,
+		"limit":   limit,
+		"reports": reports,
+	})
 }
 
 func GetMyDailyReports(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	var reports []models.DailyReport
 
-	if err := database.DB.Where("user_id = ?", userID).Order("created_at DESC").Find(&reports).Error; err != nil {
+	query := database.DB.Where("user_id = ?", userID)
+
+	// Pagination
+	page, limit := parsePagination(c)
+	offset := (page - 1) * limit
+
+	var total int64
+	query.Model(&models.DailyReport{}).Count(&total)
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&reports).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch your reports"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"reports": reports})
+	c.JSON(http.StatusOK, gin.H{
+		"count":   total,
+		"page":    page,
+		"limit":   limit,
+		"reports": reports,
+	})
 }
 
 func GetDailyReportStats(c *gin.Context) {
-	// Simple count for total submitted logic if required
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	var totalCount, submittedCount, approvedCount, rejectedCount int64
+
+	database.DB.Model(&models.DailyReport{}).Count(&totalCount)
+	database.DB.Model(&models.DailyReport{}).Where("status = ?", "submitted").Count(&submittedCount)
+	database.DB.Model(&models.DailyReport{}).Where("status = ?", "approved").Count(&approvedCount)
+	database.DB.Model(&models.DailyReport{}).Where("status = ?", "rejected").Count(&rejectedCount)
+
+	// Per-user submission count for the current month
+	type UserStat struct {
+		UserID uuid.UUID `json:"user_id"`
+		Name   string    `json:"name"`
+		Count  int64     `json:"count"`
+	}
+	var userStats []UserStat
+	database.DB.Table("daily_reports").
+		Select("daily_reports.user_id, users.name, count(*) as count").
+		Joins("join users on users.id = daily_reports.user_id").
+		Where("daily_reports.deleted_at IS NULL").
+		Group("daily_reports.user_id, users.name").
+		Order("count desc").
+		Limit(20).
+		Scan(&userStats)
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":     totalCount,
+		"submitted": submittedCount,
+		"approved":  approvedCount,
+		"rejected":  rejectedCount,
+		"by_user":   userStats,
+	})
 }
 
 func ReviewDailyReport(c *gin.Context) {
@@ -169,4 +223,26 @@ func UpdateDailyReport(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Daily report updated successfully", "report": report})
+}
+
+// DeleteDailyReport deletes a daily report (admin only)
+func DeleteDailyReport(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid report ID"})
+		return
+	}
+
+	var report models.DailyReport
+	if err := database.DB.First(&report, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Report not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&report).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete report"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Report deleted successfully"})
 }

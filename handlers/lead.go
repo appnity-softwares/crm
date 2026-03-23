@@ -20,17 +20,22 @@ type CreateLeadInput struct {
 	Status     string     `json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
 	AssignedTo *uuid.UUID `json:"assigned_to"`
 	Notes      string     `json:"notes"`
+	Type       string     `json:"type" binding:"omitempty,oneof=direct outbound"`
+	SOW        string     `json:"sow"`
 }
 
 type UpdateLeadInput struct {
-	Name       string     `json:"name"`
-	Email      string     `json:"email" binding:"omitempty,email"`
-	Phone      string     `json:"phone"`
-	Company    string     `json:"company"`
-	Source     string     `json:"source" binding:"omitempty,oneof=website referral social other"`
-	Status     string     `json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
-	AssignedTo *uuid.UUID `json:"assigned_to"`
-	Notes      string     `json:"notes"`
+	Name               string     `json:"name"`
+	Email              string     `json:"email" binding:"omitempty,email"`
+	Phone              string     `json:"phone"`
+	Company            string     `json:"company"`
+	Source             string     `json:"source" binding:"omitempty,oneof=website referral social other"`
+	Status             string     `json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
+	AssignedTo         *uuid.UUID `json:"assigned_to"`
+	Notes              string     `json:"notes"`
+	Type               string     `json:"type" binding:"omitempty,oneof=direct outbound"`
+	SOW                string     `json:"sow"`
+	AdvancePaidConfirm *bool      `json:"advance_paid_confirm"`
 }
 
 // CreateLead creates a new lead
@@ -54,6 +59,8 @@ func CreateLead(c *gin.Context) {
 		AssignedTo: input.AssignedTo,
 		Notes:      input.Notes,
 		AddedByID:  uID,
+		Type:       input.Type,
+		SOW:        input.SOW,
 	}
 
 	if lead.Source == "" {
@@ -213,6 +220,15 @@ func UpdateLead(c *gin.Context) {
 	if input.Notes != "" {
 		updates["notes"] = input.Notes
 	}
+	if input.Type != "" {
+		updates["type"] = input.Type
+	}
+	if input.SOW != "" {
+		updates["sow"] = input.SOW
+	}
+	if input.AdvancePaidConfirm != nil {
+		updates["advance_paid_confirm"] = *input.AdvancePaidConfirm
+	}
 
 	database.DB.Model(&lead).Updates(updates)
 
@@ -242,6 +258,19 @@ func DeleteLead(c *gin.Context) {
 }
 
 // SubmitRequirement allows a prospect user to submit their project needs
+func GetMyLeadProfile(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	uID := userID.(uuid.UUID)
+
+	var lead models.Lead
+	if err := database.DB.Where("user_id = ?", uID).Order("created_at DESC").First(&lead).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No requirement profile found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"lead": lead})
+}
+
 func SubmitRequirement(c *gin.Context) {
 	var input struct {
 		Name    string `json:"name" binding:"required"`
@@ -271,6 +300,7 @@ func SubmitRequirement(c *gin.Context) {
 		Notes:     input.Notes,
 		UserID:    &uID,
 		AddedByID: uID, // Self-added
+		Type:      "direct",
 	}
 
 	if err := database.DB.Create(&lead).Error; err != nil {
@@ -299,6 +329,16 @@ func ConvertLeadToClient(c *gin.Context) {
 		return
 	}
 
+	var input struct {
+		TotalValue     float64 `json:"total_value" binding:"required"`
+		AdvancePayment float64 `json:"advance_payment"`
+		ProjectName    string  `json:"project_name"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	var project models.Project
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Update Lead Status
@@ -306,23 +346,53 @@ func ConvertLeadToClient(c *gin.Context) {
 			return err
 		}
 
-		// 2. Promote User to Client
-		if err := tx.Model(&models.User{}).Where("id = ?", *lead.UserID).Update("role", "client").Error; err != nil {
+		// 2. Promote User to Client and transfer lead info
+		if err := tx.Model(&models.User{}).Where("id = ?", *lead.UserID).Updates(map[string]any{
+			"role":    "client",
+			"company": lead.Company,
+			"notes":   lead.Notes,
+		}).Error; err != nil {
 			return err
 		}
 
-		// 3. Create initial Project
+		// 3. Create initial Project with contract details
 		creatorID, _ := c.Get("user_id")
+		pName := input.ProjectName
+		if pName == "" {
+			pName = lead.Name + "'s Project"
+		}
 		project = models.Project{
-			Name:        lead.Name + "'s Project",
+			Name:        pName,
 			Description: lead.Notes,
-			Status:      "planning",
+			Status:      "active", // Usually active once paid
 			ClientID:    lead.UserID,
+			TotalValue:  input.TotalValue,
+			AmountPaid:  input.AdvancePayment,
 			CreatedBy:   creatorID.(uuid.UUID),
 			StartDate:   time.Now(),
 		}
 		if err := tx.Create(&project).Error; err != nil {
 			return err
+		}
+
+		// 4. Record Advance Payment as Income
+		if input.AdvancePayment > 0 {
+			income := models.Income{
+				ProjectID: &project.ID,
+				Amount:    input.AdvancePayment,
+				Source:    "Advance Payment: " + project.Name,
+				Category:  "Project Payment",
+				Date:      time.Now(),
+				CreatedBy: creatorID.(uuid.UUID),
+			}
+			if err := tx.Create(&income).Error; err != nil {
+				return err
+			}
+
+			// Adjust Balance
+			if err := AdjustBalance(tx, input.AdvancePayment, "income", "Lead Conversion: "+lead.ID.String(), "Project Advance: "+project.Name); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -337,4 +407,27 @@ func ConvertLeadToClient(c *gin.Context) {
 		"message": "Lead converted to client successfully! Project created.",
 		"project": project,
 	})
+}
+// AcceptLeadSOW allows a prospect to accept the SOW
+func AcceptLeadSOW(c *gin.Context) {
+	id, _ := uuid.Parse(c.Param("id"))
+	uID, _ := c.Get("user_id")
+
+	var lead models.Lead
+	if err := database.DB.First(&lead, "id = ? AND user_id = ?", id, uID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Lead not found"})
+		return
+	}
+
+	if lead.SOW == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot accept an empty SOW. Please provide details first."})
+		return
+	}
+
+	now := time.Now()
+	lead.SOWAccepted = true
+	lead.SOWAcceptedAt = &now
+	database.DB.Save(&lead)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Statement of Work accepted successfully!", "lead": lead})
 }

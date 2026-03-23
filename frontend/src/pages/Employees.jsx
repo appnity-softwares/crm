@@ -77,9 +77,23 @@ export default function Employees() {
             header: 'Name',
             accessor: 'name',
             render: (r) => (
-                <Link to={`/employees/${r.id}`} style={{ fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
-                    {r.name}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="table-avatar" style={{ 
+                        width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', 
+                        background: 'var(--primary-100)', color: 'var(--primary-700)',
+                        fontSize: '0.75rem', fontWeight: 700, display: 'flex', 
+                        alignItems: 'center', justifyCenter: 'center', flexShrink: 0 
+                    }}>
+                        {r.avatar ? (
+                            <img src={r.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            r.name?.charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    <Link to={`/employees/${r.id}`} style={{ fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+                        {r.name}
+                    </Link>
+                </div>
             )
         },
         { header: 'Email', accessor: 'email' },
@@ -180,7 +194,6 @@ export default function Employees() {
                                     <option value="employee">Employee</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
-                                    <option value="client">Client</option>
                                 </select>
                             </div>
                             <div className="form-group">

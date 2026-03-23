@@ -26,8 +26,10 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			portal.GET("/:token", handlers.GetPortalData)
 			portal.POST("/:token/pay", handlers.InitializePayment)
 			portal.POST("/:token/verify", handlers.VerifyPayment)
-			portal.POST("/:token/tickets", handlers.CreateTicket) // Publicly reachable via token logic in handler would be better, but for now direct is ok as it takes projectID
+			portal.POST("/:token/tickets", handlers.CreateTicket)
+			portal.POST("/:token/comments", handlers.PortalPostComment)
 			portal.GET("/:token/tickets", handlers.GetProjectTickets)
+			portal.POST("/:token/sow/accept", handlers.PortalAcceptSOW)
 		}
 	}
 
@@ -44,44 +46,55 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 		employees := protected.Group("/employees")
 		{
 			employees.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetEmployees)
-			employees.GET("/:id", handlers.GetEmployee)
-			employees.GET("/:id/stats", handlers.GetEmployeeStats)
+			employees.GET("/:id", middleware.RoleGuard("admin", "manager", "employee"), handlers.GetEmployee)
+			employees.GET("/:id/stats", middleware.RoleGuard("admin", "manager"), handlers.GetEmployeeStats)
 			employees.POST("", middleware.RoleGuard("admin"), handlers.CreateEmployee)
 			employees.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateEmployee)
 			employees.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteEmployee)
 		}
 
-		// ── Attendance ──
+		// ── Clients (admin-controlled) ──
+		clients := protected.Group("/clients")
+		{
+			clients.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetClients)
+			clients.GET("/:id", middleware.RoleGuard("admin", "manager", "client"), handlers.GetClient)
+			clients.POST("", middleware.RoleGuard("admin"), handlers.CreateClient)
+			clients.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateClient)
+			clients.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteClient)
+		}
+
+		// ── Attendance (internal roles only) ──
 		attendance := protected.Group("/attendance")
 		{
-			attendance.POST("/check-in", handlers.CheckIn)
-			attendance.PUT("/check-out", handlers.CheckOut)
+			attendance.POST("/check-in", middleware.RoleGuard("admin", "manager", "employee", "trainee"), handlers.CheckIn)
+			attendance.PUT("/check-out", middleware.RoleGuard("admin", "manager", "employee", "trainee"), handlers.CheckOut)
 			attendance.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllAttendance)
-			attendance.GET("/me", handlers.GetMyAttendance)
+			attendance.GET("/me", middleware.RoleGuard("admin", "manager", "employee", "trainee"), handlers.GetMyAttendance)
 			attendance.GET("/qr-token", middleware.RoleGuard("admin"), handlers.GenerateQRToken)
-			attendance.POST("/qr-checkin", handlers.QRCheckIn)
+			attendance.POST("/qr-checkin", middleware.RoleGuard("admin", "manager", "employee", "trainee"), handlers.QRCheckIn)
 			attendance.POST("/manual", middleware.RoleGuard("admin"), handlers.ManualAttendance)
 			attendance.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateAttendance)
 			attendance.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteAttendance)
 		}
 
-		// ── Work Logs ──
+		// ── Work Logs (internal roles only) ──
 		worklogs := protected.Group("/worklogs")
 		{
-			worklogs.POST("", handlers.CreateWorkLog)
+			worklogs.POST("", middleware.RoleGuard("admin", "manager", "employee"), handlers.CreateWorkLog)
 			worklogs.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllWorkLogs)
-			worklogs.GET("/me", handlers.GetMyWorkLogs)
-			worklogs.PUT("/:id", handlers.UpdateWorkLog)
+			worklogs.GET("/me", middleware.RoleGuard("admin", "manager", "employee"), handlers.GetMyWorkLogs)
+			worklogs.PUT("/:id", middleware.RoleGuard("admin", "manager", "employee"), handlers.UpdateWorkLog)
 			worklogs.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteWorkLog)
 		}
 
-		// ── Daily Reports (Role based KPIs) ──
+		// ── Daily Reports (internal roles only) ──
 		reports := protected.Group("/reports")
 		{
-			reports.POST("", handlers.CreateDailyReport)
+			reports.POST("", middleware.RoleGuard("admin", "manager", "employee"), handlers.CreateDailyReport)
 			reports.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllDailyReports)
-			reports.GET("/me", handlers.GetMyDailyReports)
-			reports.PUT("/:id", handlers.UpdateDailyReport)
+			reports.GET("/me", middleware.RoleGuard("admin", "manager", "employee"), handlers.GetMyDailyReports)
+			reports.PUT("/:id", middleware.RoleGuard("admin", "manager", "employee"), handlers.UpdateDailyReport)
+			reports.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteDailyReport)
 			reports.GET("/stats", middleware.RoleGuard("admin", "manager"), handlers.GetDailyReportStats)
 			reports.PUT("/:id/review", middleware.RoleGuard("admin"), handlers.ReviewDailyReport)
 		}
@@ -93,6 +106,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			projects.GET("", handlers.GetProjects)
 			projects.GET("/:id", handlers.GetProject)
 			projects.PUT("/:id", handlers.UpdateProject)
+			projects.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteProject)
 			projects.POST("/:id/assign", middleware.RoleGuard("admin", "manager"), handlers.AssignMember)
 			projects.POST("/:id/transfer", middleware.RoleGuard("admin", "manager"), handlers.TransferMember)
 			projects.PUT("/:id/approve", middleware.RoleGuard("admin", "manager"), handlers.ApproveProjectUpdate)
@@ -100,9 +114,15 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 
 			// Tasks
 			projects.GET("/:id/tasks", handlers.GetProjectTasks)
-			projects.POST("/tasks", handlers.CreateTask)
-			projects.PUT("/tasks/:id", handlers.UpdateTask)
-			projects.DELETE("/tasks/:id", handlers.DeleteTask)
+			projects.POST("/tasks", middleware.RoleGuard("admin", "manager", "employee"), handlers.CreateTask)
+			projects.PUT("/tasks/:id", middleware.RoleGuard("admin", "manager", "employee"), handlers.UpdateTask)
+			projects.DELETE("/tasks/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteTask)
+
+			// Updates
+			projects.POST("/updates", middleware.RoleGuard("admin", "manager", "employee"), handlers.CreateProjectUpdate)
+			projects.GET("/:id/updates", handlers.GetProjectUpdates)
+			projects.POST("/updates/comments", handlers.CreateProjectComment)
+			projects.GET("/updates/:update_id/comments", handlers.GetProjectComments)
 		}
 
 		// ── Payroll ──
@@ -110,7 +130,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 		{
 			payroll.POST("", middleware.RoleGuard("admin"), handlers.CreatePayroll)
 			payroll.GET("", middleware.RoleGuard("admin"), handlers.GetAllPayroll)
-			payroll.GET("/me", handlers.GetMyPayroll)
+			payroll.GET("/me", middleware.RoleGuard("admin", "manager", "employee"), handlers.GetMyPayroll)
 			payroll.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdatePayroll)
 		}
 
@@ -132,21 +152,32 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			leads.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateLead)
 			leads.GET("", handlers.GetLeads)
 			leads.GET("/:id", handlers.GetLead)
-			leads.PUT("/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateLead)
+			leads.PUT("/:id", middleware.RoleGuard("admin", "manager", "prospect"), handlers.UpdateLead)
 			leads.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteLead)
 			leads.POST("/:id/convert", middleware.RoleGuard("admin", "manager"), handlers.ConvertLeadToClient)
 
 			// Prospect tools
 			leads.POST("/requirement", middleware.RoleGuard("prospect"), handlers.SubmitRequirement)
+			leads.GET("/my-profile", middleware.RoleGuard("prospect"), handlers.GetMyLeadProfile)
+			leads.POST("/:id/sow/accept", middleware.RoleGuard("prospect"), handlers.AcceptLeadSOW)
 		}
 
 		// ── Expenses ──
 		expenses := protected.Group("/expenses")
 		{
 			expenses.POST("", middleware.RoleGuard("admin"), handlers.CreateExpense)
-			expenses.GET("", middleware.RoleGuard("admin"), handlers.GetAllExpenses)
+			expenses.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllExpenses)
 			expenses.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateExpense)
 			expenses.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteExpense)
+		}
+
+		// ── Income ──
+		income := protected.Group("/income")
+		{
+			income.POST("", middleware.RoleGuard("admin"), handlers.CreateIncome)
+			income.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllIncome)
+			income.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateIncome)
+			income.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteIncome)
 		}
 
 		// ── Configs & Flags (admin) ──
@@ -160,7 +191,8 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 		finance := protected.Group("/finance")
 		{
 			finance.GET("/balance", handlers.GetBalance)
-			finance.GET("/stats", middleware.RoleGuard("admin"), handlers.GetFinanceStats)
+			finance.GET("/stats", middleware.RoleGuard("admin", "manager"), handlers.GetFinanceStats)
+			finance.GET("/analytics", middleware.RoleGuard("admin", "manager"), handlers.GetFinanceAnalytics)
 			finance.POST("/balance/manual", middleware.RoleGuard("admin"), handlers.UpdateBalanceManual)
 		}
 
@@ -185,6 +217,11 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			chat.GET("/conversations", handlers.GetConversations)
 			chat.GET("/history/:otherID", handlers.GetChatHistory)
 			chat.POST("/send", handlers.SendMessage)
+			chat.GET("/permissions", handlers.GetChatPermissions)
+			chat.POST("/permissions/request", handlers.RequestChatPermission)
+			chat.PUT("/permissions/:id", middleware.RoleGuard("admin"), handlers.UpdateChatPermission)
+			chat.PUT("/:id", handlers.EditMessage)
+			chat.DELETE("/:id", handlers.DeleteMessage)
 		}
 
 		// ── Notifications ──
@@ -194,15 +231,48 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			notifications.PUT("/:id/read", handlers.MarkNotificationRead)
 			notifications.PUT("/read-all", handlers.MarkAllNotificationsRead)
 			notifications.DELETE("/:id", handlers.DeleteNotification)
+
+			// FCM device token management
+			notifications.POST("/token", handlers.SaveFCMToken)
+			notifications.DELETE("/token", handlers.RemoveFCMToken)
+
+			// Preferences
+			notifications.GET("/types", handlers.GetNotificationTypes)
+			notifications.GET("/preferences", handlers.GetPreferences)
+			notifications.PUT("/preferences", handlers.UpdatePreferences)
 		}
 
-		// ── Leaves ──
+		// ── Leaves (internal roles only) ──
 		leaves := protected.Group("/leaves")
 		{
-			leaves.POST("", handlers.ApplyLeave)
-			leaves.GET("/me", handlers.GetMyLeaves)
+			leaves.POST("", middleware.RoleGuard("admin", "manager", "employee"), handlers.ApplyLeave)
+			leaves.GET("/me", middleware.RoleGuard("admin", "manager", "employee"), handlers.GetMyLeaves)
 			leaves.GET("", middleware.RoleGuard("admin", "manager"), handlers.GetAllLeaves)
 			leaves.PUT("/:id/review", middleware.RoleGuard("admin", "manager"), handlers.ReviewLeave)
+		}
+
+		// ── Training (Admins/Managers) ──
+		training := protected.Group("/training")
+		{
+			// Courses
+			training.POST("/courses", middleware.RoleGuard("admin", "manager"), handlers.CreateCourse)
+			training.GET("/courses", handlers.GetCourses)
+			training.PUT("/courses/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateCourse)
+
+			// Enrollments
+			training.POST("/enrollments", middleware.RoleGuard("admin", "manager"), handlers.EnrollStudent)
+			training.GET("/enrollments", middleware.RoleGuard("admin", "manager"), handlers.GetEnrollments)
+			training.PUT("/enrollments/:id", middleware.RoleGuard("admin", "manager", "trainee"), handlers.UpdateEnrollment)
+			training.POST("/enrollments/:id/payments", middleware.RoleGuard("admin", "manager"), handlers.AddEnrollmentPayment)
+			training.GET("/enrollments/me", middleware.RoleGuard("trainee", "alumni"), handlers.GetMyEnrollments)
+		}
+
+		// ── Job Board ──
+		jobs := protected.Group("/jobs")
+		{
+			jobs.GET("", handlers.GetJobs)
+			jobs.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateJob)
+			jobs.DELETE("/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteJob)
 		}
 	}
 }

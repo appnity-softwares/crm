@@ -14,9 +14,17 @@ import (
 type CreateExpenseInput struct {
 	Title       string    `json:"title" binding:"required"`
 	Description string    `json:"description"`
-	Amount      float64   `json:"amount" binding:"required"`
+	Amount      float64   `json:"amount" binding:"required,gt=0"`
 	Date        time.Time `json:"date" binding:"required"`
 	Category    string    `json:"category"`
+}
+
+type UpdateExpenseInput struct {
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Amount      *float64   `json:"amount" binding:"omitempty,gt=0"`
+	Date        *time.Time `json:"date"`
+	Category    string     `json:"category"`
 }
 
 func CreateExpense(c *gin.Context) {
@@ -41,8 +49,6 @@ func CreateExpense(c *gin.Context) {
 		if err := tx.Create(&expense).Error; err != nil {
 			return err
 		}
-		// Adjust Balance (Negative amount for expense)
-		// Assuming AdjustBalance function is defined elsewhere and accessible
 		return AdjustBalance(tx, -expense.Amount, "expense", expense.Title, expense.Description)
 	})
 
@@ -68,12 +74,24 @@ func GetAllExpenses(c *gin.Context) {
 		query = query.Where("category = ?", category)
 	}
 
-	if err := query.Order("date DESC").Find(&expenses).Error; err != nil {
+	// Pagination
+	page, limit := parsePagination(c)
+	offset := (page - 1) * limit
+
+	var total int64
+	query.Model(&models.Expense{}).Count(&total)
+
+	if err := query.Order("date DESC").Offset(offset).Limit(limit).Find(&expenses).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch expenses"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"expenses": expenses})
+	c.JSON(http.StatusOK, gin.H{
+		"count":    total,
+		"page":     page,
+		"limit":    limit,
+		"expenses": expenses,
+	})
 }
 
 func UpdateExpense(c *gin.Context) {
@@ -84,19 +102,35 @@ func UpdateExpense(c *gin.Context) {
 		return
 	}
 
-	var input CreateExpenseInput
+	var input UpdateExpenseInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	expense.Title = input.Title
-	expense.Description = input.Description
-	expense.Amount = input.Amount
-	expense.Date = input.Date
-	expense.Category = input.Category
+	updates := map[string]any{}
+	if input.Title != "" {
+		updates["title"] = input.Title
+	}
+	if input.Description != "" {
+		updates["description"] = input.Description
+	}
+	if input.Amount != nil {
+		updates["amount"] = *input.Amount
+	}
+	if input.Date != nil {
+		updates["date"] = *input.Date
+	}
+	if input.Category != "" {
+		updates["category"] = input.Category
+	}
 
-	database.DB.Save(&expense)
+	if err := database.DB.Model(&expense).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update expense"})
+		return
+	}
+
+	database.DB.Preload("User").First(&expense, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{"message": "Expense updated", "expense": expense})
 }
 

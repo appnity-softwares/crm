@@ -2,6 +2,7 @@ package database
 
 import (
 	"log"
+	"os"
 
 	"github.com/pushp314/erp-crm/config"
 	"github.com/pushp314/erp-crm/models"
@@ -15,9 +16,15 @@ var DB *gorm.DB
 func Connect() {
 	dsn := config.AppConfig.GetDSN()
 
+	// Use appropriate log level based on environment
+	logLevel := logger.Info
+	if os.Getenv("GIN_MODE") == "release" {
+		logLevel = logger.Warn
+	}
+
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)
@@ -39,6 +46,7 @@ func Connect() {
 		&models.DailyReport{},
 		&models.FeatureFlag{},
 		&models.Notification{},
+		&models.NotificationPreference{},
 		&models.Expense{},
 		&models.CompanyBalance{},
 		&models.BalanceLog{},
@@ -47,6 +55,11 @@ func Connect() {
 		&models.Message{},
 		&models.Task{},
 		&models.Ticket{},
+		&models.Income{},
+		&models.ChatPermission{},
+		&models.ProjectUpdate{},
+		&models.ProjectComment{},
+		&models.Course{}, &models.Enrollment{}, &models.Job{},
 	)
 	if err != nil {
 		log.Fatal("❌ Failed to auto-migrate:", err)
@@ -59,21 +72,31 @@ func SeedAdmin() {
 	var count int64
 	DB.Model(&models.User{}).Where("role = ?", "admin").Count(&count)
 	if count == 0 {
+		// Use env password if provided, otherwise use a secure default
+		adminPassword := os.Getenv("ADMIN_SEED_PASSWORD")
+		if adminPassword == "" {
+			adminPassword = "ChangeMe!Admin@2026"
+		}
+
+		adminEmail := os.Getenv("ADMIN_SEED_EMAIL")
+		if adminEmail == "" {
+			adminEmail = "admin@erp.com"
+		}
+
 		admin := models.User{
 			Name:        "Admin",
-			Email:       "admin@erp.com",
+			Email:       adminEmail,
 			Role:        "admin",
 			Department:  "Management",
 			Designation: "System Administrator",
-			Phone:       "+91 6267935314",
 			IsActive:    true,
 		}
-		admin.HashPassword("admin123")
+		admin.HashPassword(adminPassword)
 
 		if err := DB.Create(&admin).Error; err != nil {
 			log.Fatal("❌ Failed to seed admin user:", err)
 		}
-		log.Println("✅ Admin user seeded (admin@erp.com / admin123)")
+		log.Printf("✅ Admin user seeded (%s) — CHANGE PASSWORD IMMEDIATELY", adminEmail)
 	} else {
 		log.Println("ℹ️  Admin user already exists, skipping seed")
 	}

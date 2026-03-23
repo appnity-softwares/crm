@@ -32,10 +32,13 @@ export default function Attendance() {
     const [filterDate, setFilterDate] = useState('');
     const [filterMonth, setFilterMonth] = useState('');
     const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+    const [filterEmployee, setFilterEmployee] = useState('');
 
     const load = async () => {
         setLoading(true);
         const params = {};
+        if (filterEmployee) params.user_id = filterEmployee;
+        
         if (filterDate) {
             params.from = filterDate;
             params.to = filterDate;
@@ -54,14 +57,14 @@ export default function Attendance() {
                 ? await attendanceAPI.getAll(params)
                 : await attendanceAPI.getMine(params);
             setRecords(data.attendance || []);
-            if (hasElevated) {
+            if (hasElevated && employees.length === 0) {
                 const { data: empData } = await employeeAPI.getAll();
                 setEmployees(empData.employees || []);
             }
         } catch { } finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, [filterDate, filterMonth, filterYear]);
+    useEffect(() => { load(); }, [filterDate, filterMonth, filterYear, filterEmployee]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -228,13 +231,28 @@ export default function Attendance() {
                 {/* Advanced Filters */}
                 <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                        {hasElevated && (
+                            <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
+                                <label style={{ fontSize: '0.75rem' }}>Select Employee</label>
+                                <select 
+                                    className="form-control" 
+                                    value={filterEmployee} 
+                                    onChange={e => setFilterEmployee(e.target.value)}
+                                >
+                                    <option value="">All Employees</option>
+                                    {employees.map(emp => (
+                                        <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 120 }}>
                             <label style={{ fontSize: '0.75rem' }}>Filter by Year</label>
                             <select className="form-control" value={filterYear} onChange={e => { setFilterYear(e.target.value); setFilterDate(''); }}>
                                 {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
+                        <div className="form-group" style={{ marginBottom: 0, minWidth: 120 }}>
                             <label style={{ fontSize: '0.75rem' }}>Filter by Month</label>
                             <select className="form-control" value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setFilterDate(''); }}>
                                 <option value="">All Months</option>
@@ -249,7 +267,7 @@ export default function Attendance() {
                                 <input type="date" className="form-control" value={filterDate} onChange={e => { setFilterDate(e.target.value); setFilterMonth(''); }} />
                             </div>
                         </div>
-                        <button className="btn btn-secondary" onClick={() => { setFilterDate(''); setFilterMonth(''); setFilterYear(new Date().getFullYear().toString()); }}>
+                        <button className="btn btn-secondary" onClick={() => { setFilterDate(''); setFilterMonth(''); setFilterYear(new Date().getFullYear().toString()); setFilterEmployee(''); }}>
                             Clear
                         </button>
                     </div>

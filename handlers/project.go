@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"gorm.io/gorm"
 )
 
 type CreateProjectInput struct {
@@ -439,13 +441,25 @@ func ApproveProjectUpdate(c *gin.Context) {
 		return
 	}
 
-	if input.Action == "approve" {
-		project.Progress = *project.PendingProgress
-	}
-	project.PendingProgress = nil
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		if input.Action == "approve" {
+			oldProgress := project.Progress
+			project.Progress = *project.PendingProgress
 
-	if err := database.DB.Save(&project).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+			// Automated Invoicing
+			if oldProgress < 50 && project.Progress >= 50 && project.TotalValue > 0 {
+				GenerateMilestoneInvoice(tx, project, 50)
+			} else if oldProgress < 100 && project.Progress == 100 && project.TotalValue > 0 {
+				GenerateMilestoneInvoice(tx, project, 100)
+			}
+		}
+		project.PendingProgress = nil
+
+		return tx.Save(&project).Error
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project progress"})
 		return
 	}
 
@@ -453,4 +467,115 @@ func ApproveProjectUpdate(c *gin.Context) {
 		"message": "Project update " + input.Action + "d",
 		"project": project,
 	})
+}
+
+// CreateProjectUpdate adds a new link/update to a project
+func CreateProjectUpdate(c *gin.Context) {
+	userId, _ := c.Get("user_id")
+	var input models.ProjectUpdate
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input.CreatedBy = userId.(uuid.UUID)
+	if err := database.DB.Create(&input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project update"})
+		return
+	}
+
+	// Notify Client of project update
+	var project models.Project
+	if err := database.DB.First(&project, input.ProjectID).Error; err == nil && project.ClientID != nil {
+		CreateNotification(*project.ClientID, "project_update", "New Project Update!", fmt.Sprintf("Progress has been posted for: %s", project.Name))
+	}
+
+	c.JSON(http.StatusCreated, input)
+}
+
+// GetProjectUpdates returns updates for a project
+func GetProjectUpdates(c *gin.Context) {
+	id := c.Param("id")
+	var updates []models.ProjectUpdate
+	if err := database.DB.Where("project_id = ?", id).Preload("Author").Preload("Comments.User").Order("created_at desc").Find(&updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch project updates"})
+		return
+	}
+	c.JSON(http.StatusOK, updates)
+}
+
+// CreateProjectComment adds a comment to an update
+func CreateProjectComment(c *gin.Context) {
+	userId, _ := c.Get("user_id")
+	var input models.ProjectComment
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input.UserID = userId.(uuid.UUID)
+	if err := database.DB.Create(&input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post comment"})
+		return
+	}
+
+	database.DB.Preload("User").First(&input, "id = ?", input.ID)
+
+	// Notify relevant parties
+	var update models.ProjectUpdate
+	if err := database.DB.Preload("Project").First(&update, input.UpdateID).Error; err == nil && update.Project.ClientID != nil {
+		if input.UserID == *update.Project.ClientID {
+			// Client commented -> notify Project Creator/Manager (use update.CreatedBy as a proxy for the 'owner')
+			CreateNotification(update.CreatedBy, "message", "Client Commented on Project", fmt.Sprintf("%s: %s", input.User.Name, input.Content))
+		} else {
+			// Internal user commented -> notify Client
+			CreateNotification(*update.Project.ClientID, "message", "New Update Comment", fmt.Sprintf("%s: %s", input.User.Name, input.Content))
+		}
+	}
+
+	c.JSON(http.StatusCreated, input)
+}
+
+// GetProjectComments returns comments for a specific project update
+func GetProjectComments(c *gin.Context) {
+	updateID := c.Param("update_id")
+	var comments []models.ProjectComment
+	if err := database.DB.Where("update_id = ?", updateID).Preload("User").Order("created_at asc").Find(&comments).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments"})
+		return
+	}
+	c.JSON(http.StatusOK, comments)
+}
+
+// DeleteProject soft-deletes a project (admin only)
+func DeleteProject(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	var project models.Project
+	if err := database.DB.First(&project, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	// Check if project has active invoices
+	var unpaidInvoices int64
+	database.DB.Model(&models.Invoice{}).Where("project_id = ? AND status != ?", id, "paid").Count(&unpaidInvoices)
+	if unpaidInvoices > 0 {
+		c.JSON(http.StatusConflict, gin.H{
+			"error":           "Cannot delete project with unpaid invoices",
+			"unpaid_invoices": unpaidInvoices,
+		})
+		return
+	}
+
+	if err := database.DB.Delete(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Project deleted successfully"})
 }

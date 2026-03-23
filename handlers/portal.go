@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/config"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
@@ -35,19 +36,68 @@ func GetPortalData(c *gin.Context) {
 	var project models.Project
 	err = database.DB.First(&project, "client_portal_token = ?", token).Error
 	if err == nil {
-		// Found project, fetch its invoices too
+		// Found project, fetch its invoices, updates and comments
 		var invoices []models.Invoice
 		database.DB.Where("project_id = ?", project.ID).Find(&invoices)
+
+		var updates []models.ProjectUpdate
+		database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
 
 		c.JSON(http.StatusOK, gin.H{
 			"type":     "project",
 			"project":  project,
 			"invoices": invoices,
+			"updates":  updates,
 		})
 		return
 	}
 
 	c.JSON(http.StatusNotFound, gin.H{"error": "Portal link is invalid or expired"})
+}
+
+// PortalPostComment allows a client to comment on an update from the portal
+func PortalPostComment(c *gin.Context) {
+	token := c.Param("token")
+	var input struct {
+		UpdateID uuid.UUID `json:"update_id" binding:"required"`
+		Content  string    `json:"content" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify project belongs to token
+	var project models.Project
+	if err := database.DB.First(&project, "client_portal_token = ?", token).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+		return
+	}
+
+	// Verify update belongs to project
+	var update models.ProjectUpdate
+	if err := database.DB.First(&update, "id = ? AND project_id = ?", input.UpdateID, project.ID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Update not found"})
+		return
+	}
+
+	comment := models.ProjectComment{
+		UpdateID: input.UpdateID,
+		UserID:   *project.ClientID,
+		Content:  input.Content,
+	}
+
+	if err := database.DB.Create(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post comment"})
+		return
+	}
+
+	// Trigger notification for the project manager or assigned employee
+	// For simplicity, we can notify the creator of the project if no specific assignee is found
+	CreateNotification(project.CreatedBy, "message", "New Client Comment", "The client commented on '"+update.Title+"'")
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Comment posted successfully"})
 }
 
 // InitializePayment creates a Razorpay Order
@@ -150,4 +200,24 @@ func SendInvoiceReminder(c *gin.Context) {
 	fmt.Printf("Sending reminder to %s for Invoice %s\n", invoice.ClientEmail, invoice.InvoiceNumber)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Reminder sent to " + invoice.ClientEmail})
+}
+// PortalAcceptSOW allows a client to accept the SOW from the portal
+func PortalAcceptSOW(c *gin.Context) {
+	token := c.Param("token")
+
+	var project models.Project
+	if err := database.DB.First(&project, "client_portal_token = ?", token).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+		return
+	}
+
+	if err := database.DB.Model(&project).Update("sow_accepted_by_client", true).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to accept SOW"})
+		return
+	}
+
+	// Notify PM/Employee
+	CreateNotification(project.CreatedBy, "message", "SOW Accepted", "The client accepted the SOW for '"+project.Name+"'")
+
+	c.JSON(http.StatusOK, gin.H{"message": "SOW accepted successfully"})
 }

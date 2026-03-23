@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Bell, Info, CheckCircle, AlertTriangle, X, Search, ChevronDown, Sun, Moon, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { Bell, Info, CheckCircle, HelpCircle, AlertTriangle, X, Search, ChevronDown, Sun, Moon, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useLocation } from 'react-router-dom';
 import CommandPalette from '../ui/CommandPalette';
+import HelpModal from '../ui/HelpModal';
+import Modal from '../ui/Modal';
 
 export default function TopHeader() {
     const { user, logout } = useAuth();
@@ -12,7 +15,9 @@ export default function TopHeader() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showPalette, setShowPalette] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
     const [sidebarHidden, setSidebarHidden] = useState(localStorage.getItem('sidebar_hidden') === 'true');
+    const location = useLocation();
 
     const notificationRef = useRef(null);
     const userMenuRef = useRef(null);
@@ -71,22 +76,38 @@ export default function TopHeader() {
                     >
                         {sidebarHidden ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
                     </button>
-                    <div className="header-search-container">
-                        <button
-                            className="header-search-bar"
-                            onClick={() => setShowPalette(true)}
-                            type="button"
-                        >
-                            <Search size={16} />
-                            <span className="search-placeholder">Search anything…</span>
-                            <kbd className="search-command">⌘K</kbd>
-                        </button>
-                    </div>
+                    {user?.role === 'client' ? (
+                        <div style={{ display: 'flex', gap: 20, marginLeft: 20 }}>
+                            <a href="/" style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Dashboard</a>
+                            <a href="/chat" style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Messages</a>
+                        </div>
+                    ) : (
+                        <div className="header-search-container">
+                            <button
+                                className="header-search-bar"
+                                onClick={() => setShowPalette(true)}
+                                type="button"
+                            >
+                                <Search size={16} />
+                                <span className="search-placeholder">Search anything…</span>
+                                <kbd className="search-command">⌘K</kbd>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="header-actions">
                     <button className="header-action-btn theme-toggle" onClick={toggleTheme} title="Toggle theme">
                         {dark ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+
+                    <button 
+                        className="header-action-btn help-trigger" 
+                        onClick={() => setShowHelp(true)} 
+                        title="Page Information & Help"
+                        style={{ color: 'var(--blue-500)', background: 'var(--blue-50)', borderRadius: '50%' }}
+                    >
+                        <HelpCircle size={20} />
                     </button>
 
                     <div className="notification-wrapper" ref={notificationRef}>
@@ -162,8 +183,12 @@ export default function TopHeader() {
                             setShowUserMenu(!showUserMenu);
                             setShowDropdown(false);
                         }}>
-                            <div className="user-avatar-mini">
-                                {user?.name?.charAt(0)}
+                            <div className="user-avatar-mini" style={{ background: user?.avatar ? 'transparent' : 'var(--primary-100)', color: 'var(--primary-700)', overflow: 'hidden' }}>
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    user?.name?.charAt(0).toUpperCase()
+                                )}
                             </div>
                             <div className="user-meta-mini">
                                 <span className="user-name">{user?.name?.split(' ')[0]}</span>
@@ -174,7 +199,13 @@ export default function TopHeader() {
                         {showUserMenu && (
                             <div className="user-menu-dropdown">
                                 <div className="user-menu-header">
-                                    <div className="user-avatar-lg">{user?.name?.charAt(0)}</div>
+                                <div className="user-avatar-lg" style={{ background: user?.avatar ? 'transparent' : 'var(--primary-100)', color: 'var(--primary-700)', overflow: 'hidden' }}>
+                                    {user?.avatar ? (
+                                        <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        user?.name?.charAt(0).toUpperCase()
+                                    )}
+                                </div>
                                     <div className="user-text">
                                         <h4>{user?.name}</h4>
                                         <span>{user?.role}</span>
@@ -194,6 +225,9 @@ export default function TopHeader() {
 
             {/* Command Palette (⌘K) */}
             <CommandPalette isOpen={showPalette} onClose={() => setShowPalette(false)} />
+
+            {/* Global Help Modal */}
+            {showHelp && <HelpModal path={location.pathname} onClose={() => setShowHelp(false)} />}
         </>
     );
 }

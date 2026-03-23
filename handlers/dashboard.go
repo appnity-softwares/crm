@@ -50,6 +50,8 @@ func GetDashboardStats(c *gin.Context) {
 		Month string
 		Total float64
 	}
+	var recentIncome []models.Income
+
 	if hasFinancePerm {
 		database.DB.Model(&models.Invoice{}).
 			Select("to_char(issued_at, 'Mon') as month, sum(total_amount) as total").
@@ -57,6 +59,8 @@ func GetDashboardStats(c *gin.Context) {
 			Group("month, extract(month from issued_at)").
 			Order("extract(month from issued_at)").
 			Scan(&revenueStats)
+
+		database.DB.Order("date desc").Limit(5).Find(&recentIncome)
 	}
 
 	// Attendance trend (Last 7 days)
@@ -93,6 +97,7 @@ func GetDashboardStats(c *gin.Context) {
 
 	if hasFinancePerm {
 		response["revenue_growth"] = revenueStats
+		response["recent_income"] = recentIncome
 	}
 
 	c.JSON(http.StatusOK, response)
