@@ -109,8 +109,8 @@ export default function FinanceAnalytics() {
                             <TrendingUp size={18} color="var(--primary-500)" /> Revenue vs Expenses
                         </h3>
                     </div>
-                    <div style={{ height: 350 }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ height: 350, minHeight: 350, minWidth: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={350}>
                             <AreaChart data={safeTrend}>
                                 <defs>
                                     <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
@@ -138,8 +138,8 @@ export default function FinanceAnalytics() {
                 {/* Expense Breakdown */}
                 <div className="card" style={{ padding: 24 }}>
                     <h3>Expense Breakdown</h3>
-                    <div style={{ height: 350 }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ height: 350, minHeight: 350, minWidth: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={350}>
                             <PieChart>
                                 <Pie
                                     data={safeExpenseCategories}
@@ -167,8 +167,8 @@ export default function FinanceAnalytics() {
                 {/* Project Revenue */}
                 <div className="card" style={{ padding: 24 }}>
                     <h3 style={{ marginBottom: 20 }}>Project-wise Revenue</h3>
-                    <div style={{ height: 300 }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ height: 300, minHeight: 300, minWidth: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
                             <BarChart data={safeProjectRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                                 <XAxis dataKey="project_name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
@@ -183,8 +183,8 @@ export default function FinanceAnalytics() {
                 {/* Income Categories */}
                 <div className="card" style={{ padding: 24 }}>
                     <h3 style={{ marginBottom: 20 }}>Income Sources</h3>
-                    <div style={{ height: 300 }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ height: 300, minHeight: 300, minWidth: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
                             <PieChart>
                                 <Pie
                                     data={safeIncomeCategories}

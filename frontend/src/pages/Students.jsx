@@ -284,7 +284,7 @@ export default function Students() {
                                 </label>
                                 <select required value={form.student_id} onChange={e => setForm({ ...form, student_id: e.target.value })} disabled={!!editing}>
                                     <option value="">-- Choose Person --</option>
-                                    {allStudents.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
+                                    {(Array.isArray(allStudents) ? [...allStudents] : []).sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(s => (
                                         <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
                                     ))}
                                 </select>
