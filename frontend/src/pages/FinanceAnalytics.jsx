@@ -111,7 +111,7 @@ export default function FinanceAnalytics() {
                     </div>
                     <div style={{ height: 350 }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={trend}>
+                            <AreaChart data={safeTrend}>
                                 <defs>
                                     <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -169,7 +169,7 @@ export default function FinanceAnalytics() {
                     <h3 style={{ marginBottom: 20 }}>Project-wise Revenue</h3>
                     <div style={{ height: 300 }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={project_revenue}>
+                            <BarChart data={safeProjectRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                                 <XAxis dataKey="project_name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />

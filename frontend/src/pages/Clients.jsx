@@ -4,7 +4,7 @@ import { useToast } from '../components/ui/Toast';
 import { clientAPI, projectAPI } from '../services/api';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
-import { UserPlus, Eye, Edit2, Trash2, Mail, Phone, Briefcase, DollarSign, Ticket, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { UserPlus, Eye, Edit2, Trash2, Mail, Phone, Briefcase, DollarSign, Ticket, FileText, CheckCircle, Clock, AlertCircle, UserMinus, UserCheck } from 'lucide-react';
 
 export default function Clients() {
     const { isAdmin, hasElevated } = useAuth();
@@ -86,7 +86,7 @@ export default function Clients() {
         { 
             header: 'Client ID', 
             accessor: 'id', 
-            render: r => <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{r.id.slice(0, 8)}</span> 
+            render: r => <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{r.id?.slice(0, 8)}</span> 
         },
         {
             header: 'Name',

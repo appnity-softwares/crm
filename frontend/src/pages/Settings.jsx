@@ -77,7 +77,7 @@ export default function Settings() {
         { 
             header: 'Target ID', 
             accessor: 'target_id',
-            render: r => <code style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.target_id.split('-')[0]}...</code>
+            render: r => <code style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.target_id?.split('-')[0]}...</code>
         },
         {
             header: 'Result',

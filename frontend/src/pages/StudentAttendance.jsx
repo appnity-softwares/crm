@@ -17,14 +17,22 @@ export default function StudentAttendance() {
     const load = async () => {
         setLoading(true);
         try {
-            const [enRes, attRes] = await Promise.all([
-                trainingAPI.getMyEnrollments(),
-                attendanceAPI.getMine({ limit: 100 })
-            ]);
+            let enData = [];
+            
+            if (isTrainee) {
+                try {
+                    const enRes = await trainingAPI.getMyEnrollments();
+                    enData = enRes.data || [];
+                } catch (e) {
+                    console.log('Failed to fetch enrollments');
+                }
+            }
+
+            const attRes = await attendanceAPI.getMine({ limit: 100 });
             
             // Only show one active enrollment for simplicity
-            if (enRes.data && enRes.data.length > 0) {
-                setEnrollment(enRes.data[0]);
+            if (enData.length > 0) {
+                setEnrollment(enData[0]);
             }
             
             setRecords(attRes.data.attendance || []);
@@ -34,6 +42,7 @@ export default function StudentAttendance() {
             setLoading(false); 
         }
     };
+
 
     useEffect(() => { load(); }, []);
 

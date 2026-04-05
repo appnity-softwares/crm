@@ -338,7 +338,7 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {statsData?.recent_leads?.slice(0, 5).map(lead => (
+                                {(statsData?.recent_leads?.slice?.(0, 5) || []).map(lead => (
                                     <tr key={lead.id}>
                                         <td style={{ fontWeight: 600 }}>{lead.name}</td>
                                         <td><span className="badge gray">{lead.source}</span></td>
