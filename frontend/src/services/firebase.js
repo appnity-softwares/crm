@@ -65,7 +65,8 @@ export async function requestFCMToken(vapidKey) {
         console.log('📱 FCM token obtained');
         return token;
     } catch (err) {
-        console.error('Failed to get FCM token:', err);
+        // Softened to a warning since this is usually caused by restricted API keys or mismatched VAPID keys in the Firebase project console.
+        console.warn('⚠️ FCM subscription gracefully failed. Please verify your VAPID keys and API Key restrictions in Google Cloud Console.', err.message);
         return null;
     }
 }
