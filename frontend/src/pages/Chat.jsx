@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X, Copy } from 'lucide-react';
+import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X, Copy, UserMinus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
