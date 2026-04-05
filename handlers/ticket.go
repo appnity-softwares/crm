@@ -112,14 +112,23 @@ func GetProjectTickets(c *gin.Context) {
 		return
 	}
 
-	// Verify token belongs to a project
-	var project models.Project
-	if err := database.DB.First(&project, "client_portal_token = ?", token).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
-		return
+	var projectID uuid.UUID
+
+	// Check if token belongs to an invoice first
+	var invoice models.Invoice
+	if err := database.DB.Select("project_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+		projectID = *invoice.ProjectID
+	} else {
+		// Fallback to project portal token
+		var project models.Project
+		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+		projectID = project.ID
 	}
 
 	var tickets []models.Ticket
-	database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&tickets)
+	database.DB.Where("project_id = ?", projectID).Order("created_at DESC").Find(&tickets)
 	c.JSON(http.StatusOK, gin.H{"tickets": tickets})
 }

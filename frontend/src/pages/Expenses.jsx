@@ -43,12 +43,12 @@ export default function Expenses() {
             params.to = `${filterYear}-${filterMonth.padStart(2, '0')}-${lastDay}`;
         } else if (filterYear) {
             params.from = `${filterYear}-01-01`;
-            params.to = `${filterYear}-12-31`;
+            params.to = `${filterYear}-12-31 23:59:59`;
         }
 
         try {
-            const { data } = await expenseAPI.getAll(params);
-            setExpenses(data.expenses || []);
+            const res = await expenseAPI.getAll(params);
+            setExpenses(res.data?.expenses || res.data || []);
         } catch {
             toast('Failed to load expenses', 'error');
         } finally {
@@ -125,7 +125,8 @@ export default function Expenses() {
         });
     }
 
-    const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const safeExpenses = Array.isArray(expenses) ? expenses : [];
+    const totalExpense = safeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return (
         <div className="page-content">
@@ -193,7 +194,7 @@ export default function Expenses() {
                 {loading ? <div className="spinner" /> : (
                     <DataTable
                         columns={columns}
-                        data={expenses}
+                        data={safeExpenses}
                         pageSize={10}
                         searchable={true}
                         emptyMessage="No expenses found for this period."

@@ -68,23 +68,36 @@ func PortalPostComment(c *gin.Context) {
 		return
 	}
 
-	// Verify project belongs to token
-	var project models.Project
-	if err := database.DB.First(&project, "client_portal_token = ?", token).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
-		return
+	var projectID uuid.UUID
+	var clientID uuid.UUID
+
+	// Verify token
+	var invoice models.Invoice
+	if err := database.DB.Select("project_id", "client_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil && invoice.ClientID != nil {
+		projectID = *invoice.ProjectID
+		clientID = *invoice.ClientID
+	} else {
+		var project models.Project
+		if err := database.DB.Select("id", "client_id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+		projectID = project.ID
+		if project.ClientID != nil {
+			clientID = *project.ClientID
+		}
 	}
 
 	// Verify update belongs to project
 	var update models.ProjectUpdate
-	if err := database.DB.First(&update, "id = ? AND project_id = ?", input.UpdateID, project.ID).Error; err != nil {
+	if err := database.DB.First(&update, "id = ? AND project_id = ?", input.UpdateID, projectID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Update not found"})
 		return
 	}
 
 	comment := models.ProjectComment{
 		UpdateID: input.UpdateID,
-		UserID:   *project.ClientID,
+		UserID:   clientID,
 		Content:  input.Content,
 	}
 
@@ -93,11 +106,62 @@ func PortalPostComment(c *gin.Context) {
 		return
 	}
 
-	// Trigger notification for the project manager or assigned employee
-	// For simplicity, we can notify the creator of the project if no specific assignee is found
+	// Fetch project info for notification
+	var project models.Project
+	database.DB.First(&project, "id = ?", projectID)
 	CreateNotification(project.CreatedBy, "message", "New Client Comment", "The client commented on '"+update.Title+"'")
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Comment posted successfully"})
+}
+
+// PortalCreateTicket allows clients to raise tickets from the portal
+func PortalCreateTicket(c *gin.Context) {
+	token := c.Param("token")
+	var input struct {
+		Subject     string `json:"subject" binding:"required"`
+		Description string `json:"description" binding:"required"`
+		Priority    string `json:"priority" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var projectID uuid.UUID
+
+	// Verify token
+	var invoice models.Invoice
+	if err := database.DB.Select("project_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+		projectID = *invoice.ProjectID
+	} else {
+		var project models.Project
+		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+		projectID = project.ID
+	}
+
+	ticket := models.Ticket{
+		ProjectID:   projectID,
+		Subject:     input.Subject,
+		Description: input.Description,
+		Priority:    input.Priority,
+		Status:      "open",
+	}
+
+	if err := database.DB.Create(&ticket).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ticket"})
+		return
+	}
+
+	// Notify PM
+	var project models.Project
+	database.DB.First(&project, "id = ?", projectID)
+	CreateNotification(project.CreatedBy, "message", "New Client Ticket", "Client raised a ticket: "+input.Subject)
+
+	c.JSON(http.StatusCreated, ticket)
 }
 
 // InitializePayment creates a Razorpay Order
@@ -205,18 +269,29 @@ func SendInvoiceReminder(c *gin.Context) {
 func PortalAcceptSOW(c *gin.Context) {
 	token := c.Param("token")
 
-	var project models.Project
-	if err := database.DB.First(&project, "client_portal_token = ?", token).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
-		return
+	var projectID uuid.UUID
+
+	// Verify token
+	var invoice models.Invoice
+	if err := database.DB.Select("project_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+		projectID = *invoice.ProjectID
+	} else {
+		var project models.Project
+		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+		projectID = project.ID
 	}
 
-	if err := database.DB.Model(&project).Update("sow_accepted_by_client", true).Error; err != nil {
+	if err := database.DB.Model(&models.Project{}).Where("id = ?", projectID).Update("sow_accepted_by_client", true).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to accept SOW"})
 		return
 	}
 
-	// Notify PM/Employee
+	// Notify PM
+	var project models.Project
+	database.DB.First(&project, "id = ?", projectID)
 	CreateNotification(project.CreatedBy, "message", "SOW Accepted", "The client accepted the SOW for '"+project.Name+"'")
 
 	c.JSON(http.StatusOK, gin.H{"message": "SOW accepted successfully"})

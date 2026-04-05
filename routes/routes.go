@@ -27,7 +27,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			portal.GET("/:token", handlers.GetPortalData)
 			portal.POST("/:token/pay", handlers.InitializePayment)
 			portal.POST("/:token/verify", handlers.VerifyPayment)
-			portal.POST("/:token/tickets", handlers.CreateTicket)
+			portal.POST("/:token/tickets", handlers.PortalCreateTicket)
 			portal.POST("/:token/comments", handlers.PortalPostComment)
 			portal.GET("/:token/tickets", handlers.GetProjectTickets)
 			portal.POST("/:token/sow/accept", handlers.PortalAcceptSOW)
