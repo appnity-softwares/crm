@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { employeeAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import {
     Building2, Briefcase, Clock, FolderKanban, TrendingUp,

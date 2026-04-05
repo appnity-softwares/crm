@@ -368,6 +368,31 @@ export default function Students() {
                     </form>
                 </Modal>
             )}
+
+            {showAddTraineeModal && (
+                <Modal title="Create New Trainee Record" onClose={() => setShowAddTraineeModal(false)}>
+                    <form onSubmit={handleAddTrainee}>
+                        <div className="form-group">
+                            <label>Full Name *</label>
+                            <input required value={traineeForm.name} onChange={e => setTraineeForm({ ...traineeForm, name: e.target.value })} placeholder="John Doe" />
+                        </div>
+                        <div className="form-group">
+                            <label>Email *</label>
+                            <input type="email" required value={traineeForm.email} onChange={e => setTraineeForm({ ...traineeForm, email: e.target.value })} placeholder="john@example.com" />
+                        </div>
+                        <div className="form-group">
+                            <label>Secure Password *</label>
+                            <input type="password" required value={traineeForm.password} onChange={e => setTraineeForm({ ...traineeForm, password: e.target.value })} />
+                        </div>
+                        <div className="form-actions" style={{ marginTop: 20 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowAddTraineeModal(false)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary" disabled={saving}>
+                                {saving ? 'Creating...' : 'Create Trainee'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
         </div>
     );
 }

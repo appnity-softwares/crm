@@ -21,6 +21,7 @@ type CreateEmployeeInput struct {
 
 type UpdateEmployeeInput struct {
 	Name        string `json:"name"`
+	Email       string `json:"email" binding:"omitempty,email"`
 	Role        string `json:"role" binding:"omitempty,oneof=admin manager employee client prospect trainee alumni"`
 	Department  string `json:"department"`
 	Designation string `json:"designation"`
@@ -148,6 +149,9 @@ func UpdateEmployee(c *gin.Context) {
 	updates := map[string]any{}
 	if input.Name != "" {
 		updates["name"] = input.Name
+	}
+	if input.Email != "" {
+		updates["email"] = input.Email
 	}
 	if input.Role != "" {
 		updates["role"] = input.Role

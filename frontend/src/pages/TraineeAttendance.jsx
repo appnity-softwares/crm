@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { attendanceAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { Clock, Calendar, CheckCircle, Smartphone, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, Smartphone, MapPin, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 
 export default function TraineeAttendance() {

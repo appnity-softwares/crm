@@ -13,6 +13,7 @@ export default function Login() {
     if (user) {
         if (user.role === 'prospect') return <Navigate to="/prospect-dashboard" replace />;
         if (user.role === 'client') return <Navigate to="/client-dashboard" replace />;
+        if (user.role === 'trainee' || user.role === 'alumni') return <Navigate to="/trainee-dashboard" replace />;
         return <Navigate to="/" replace />;
     }
 
