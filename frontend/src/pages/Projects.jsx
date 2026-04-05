@@ -6,8 +6,6 @@ import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
 import { Plus, Edit2, Copy, LayoutGrid, User } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
-import { useNavigate } from 'react-router-dom';
-
 export default function Projects() {
     const { user, hasElevated } = useAuth();
     const navigate = useNavigate();
