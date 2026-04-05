@@ -16,7 +16,7 @@ export default function DataTable({
     const [page, setPage] = useState(0);
 
     const filtered = useMemo(() => {
-        let result = data;
+        let result = data || [];
 
         // Apply Search
         if (search.trim()) {

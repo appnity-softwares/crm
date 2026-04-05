@@ -38,7 +38,7 @@ export default function ProjectDetail() {
     const [showAssignModal, setShowAssignModal] = useState(false);
     
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', description: '', total_value: 0, amount_paid: 0, status: '', sow: '' });
+    const [editForm, setEditForm] = useState({ name: '', description: '', total_value: 0, amount_paid: 0, status: '', sow: '', progress: 0 });
 
     const load = async () => {
         try {
@@ -117,7 +117,9 @@ export default function ProjectDetail() {
         e.preventDefault();
         setSaving(true);
         try {
-            await projectAPI.update(id, editForm);
+            const payload = { ...editForm };
+            if (!payload.client_id) payload.client_id = null;
+            await projectAPI.update(id, payload);
             toast('Project details updated!');
             setShowEditModal(false);
             load();
@@ -154,18 +156,8 @@ export default function ProjectDetail() {
         { id: 'done', title: 'Completed', color: 'green' }
     ];
 
-    const getStatusIcon = (status) => {
-        switch(status) {
-            case 'completed': return <CheckCircle2 size={16} className="green" />;
-            case 'active': return <Activity size={16} className="blue" />;
-            case 'on_hold': return <Clock size={16} className="amber" />;
-            default: return <AlertCircle size={16} className="gray" />;
-        }
-    };
-
     return (
         <div className="page-content">
-            {/* Project Hero Header */}
             <div className="project-hero card" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
                 <div style={{ background: 'var(--bg-card)', padding: '24px 32px', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -178,7 +170,7 @@ export default function ProjectDetail() {
                             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', maxWidth: 800 }}>{project?.description}</p>
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
-                            {isAdmin && (
+                            {(isAdmin || me?.role === 'manager') && (
                                 <button className="btn btn-secondary" onClick={() => {
                                     setEditForm({ ...project, start_date: project.start_date?.split('T')[0], end_date: project.end_date?.split('T')[0] });
                                     setShowEditModal(true);
@@ -212,7 +204,7 @@ export default function ProjectDetail() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: -8, marginTop: 4 }}>
                             {project?.assignments?.slice(0, 5).map((a, i) => (
                                 <div key={i} title={a.user?.name} style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, marginLeft: i === 0 ? 0 : -10 }}>
-                                    {a.user?.name[0]}
+                                    {a.user?.name?.charAt(0) || '?'}
                                 </div>
                             ))}
                             {project?.assignments?.length > 5 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 8 }}>+{project.assignments.length - 5}</span>}
@@ -353,7 +345,6 @@ export default function ProjectDetail() {
                     </div>
                 </div>
 
-                {/* Right Sidebar */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     <div className="card" style={{ padding: 24 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -364,7 +355,7 @@ export default function ProjectDetail() {
                             {project?.assignments?.map(assign => (
                                 <div key={assign.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem' }}>{assign.user?.name[0]}</div>
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem' }}>{assign.user?.name?.charAt(0) || '?'}</div>
                                         <div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{assign.user?.name}</div>
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{assign.role}</div>
@@ -404,7 +395,6 @@ export default function ProjectDetail() {
                 </div>
             </div>
 
-            {/* Modals */}
             {showTaskModal && (
                 <Modal title="Create New Task" onClose={() => setShowTaskModal(false)}>
                     <form onSubmit={handleCreateTask}>
@@ -433,7 +423,7 @@ export default function ProjectDetail() {
             )}
 
             {showUpdateModal && (
-                <Modal title="Post Update" onClose={() => setShowUpdateModal(false)}>
+                <Modal title="Post Project Update" onClose={() => setShowUpdateModal(false)}>
                     <form onSubmit={handleCreateUpdate}>
                         <div className="form-group"><label>Title</label><input required value={updateForm.title} onChange={e => setUpdateForm({ ...updateForm, title: e.target.value })} /></div>
                         <div className="form-group" style={{ marginTop: 12 }}><label>Details</label><textarea rows={4} required value={updateForm.description} onChange={e => setUpdateForm({ ...updateForm, description: e.target.value })} /></div>
@@ -444,16 +434,34 @@ export default function ProjectDetail() {
             )}
 
             {showEditModal && (
-                <Modal title="Edit Project" onClose={() => setShowEditModal(false)}>
+                <Modal title="Edit Project Details" onClose={() => setShowEditModal(false)} size="lg">
                     <form onSubmit={handleUpdateProject}>
-                        <div className="form-group"><label>Name</label><input required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                        <div className="form-group"><label>Project Name *</label><input required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
                         <div className="form-group" style={{ marginTop: 12 }}><label>Description</label><textarea rows={3} value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} /></div>
                         <div className="form-grid" style={{ marginTop: 12 }}>
-                            <div className="form-group"><label>Total Value</label><input type="number" value={editForm.total_value} onChange={e => setEditForm({ ...editForm, total_value: parseFloat(e.target.value) })} /></div>
-                            <div className="form-group"><label>Amount Paid</label><input type="number" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) })} /></div>
+                            <div className="form-group">
+                                <label>Project Status</label>
+                                <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
+                                    <option value="planning">Planning</option>
+                                    <option value="active">Active</option>
+                                    <option value="on_hold">On Hold</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="under_maintenance">Under Maintenance</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Progress ({editForm.progress}%)</label>
+                                <input type="range" min="0" max="100" value={editForm.progress} onChange={e => setEditForm({ ...editForm, progress: parseInt(e.target.value) })} style={{ width: '100%' }} />
+                            </div>
+                            <div className="form-group"><label>Total Value ($)</label><input type="number" value={editForm.total_value} onChange={e => setEditForm({ ...editForm, total_value: parseFloat(e.target.value) || 0 })} /></div>
+                            <div className="form-group"><label>Amount Paid ($)</label><input type="number" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} /></div>
                         </div>
-                        <div className="form-group" style={{ marginTop: 12 }}><label>Progress ({editForm.progress}%)</label><input type="range" min="0" max="100" value={editForm.progress} onChange={e => setEditForm({ ...editForm, progress: parseInt(e.target.value) })} style={{ width: '100%' }} /></div>
-                        <div className="form-actions" style={{ marginTop: 24 }}><button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>Update</button></div>
+                        <div className="form-group" style={{ marginTop: 12 }}><label>Statement of Work (SOW)</label><textarea rows={5} value={editForm.sow} onChange={e => setEditForm({ ...editForm, sow: e.target.value })} placeholder="Detailed scope of project..." /></div>
+                        <div className="form-actions" style={{ marginTop: 24 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                            <button type="submit" className="btn btn-primary" disabled={saving}>Update Project</button>
+                        </div>
                     </form>
                 </Modal>
             )}

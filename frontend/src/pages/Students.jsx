@@ -44,9 +44,9 @@ export default function Students() {
                 trainingAPI.getCourses(),
                 employeeAPI.getAll()
             ]);
-            setEnrollments(enRes.data || []);
-            setCourses(coRes.data || []);
-            setAllStudents(usRes.data || []);
+            setEnrollments(enRes.data?.enrollments || enRes.data || []);
+            setCourses(coRes.data?.courses || coRes.data || []);
+            setAllStudents(usRes.data?.employees || usRes.data || []);
         } catch { } finally { setLoading(false); }
     };
 

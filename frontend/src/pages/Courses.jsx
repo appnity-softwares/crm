@@ -20,7 +20,7 @@ export default function Courses() {
         setLoading(true);
         try {
             const { data } = await trainingAPI.getCourses();
-            setCourses(data || []);
+            setCourses(data?.courses || data || []);
         } catch { } finally { setLoading(false); }
     };
 

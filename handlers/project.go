@@ -34,6 +34,7 @@ type UpdateProjectInput struct {
 	ClientID    *uuid.UUID `json:"client_id"`
 	TotalValue  *float64   `json:"total_value"`
 	AmountPaid  *float64   `json:"amount_paid"`
+	SOW         string     `json:"sow"`
 }
 
 type AssignMemberInput struct {
@@ -262,11 +263,17 @@ func UpdateProject(c *gin.Context) {
 	if input.TotalValue != nil {
 		updates["total_value"] = *input.TotalValue
 	}
+	if input.SOW != "" {
+		updates["sow"] = input.SOW
+	}
 	if input.AmountPaid != nil {
 		updates["amount_paid"] = *input.AmountPaid
 	}
 
-	database.DB.Model(&project).Updates(updates)
+	if err := database.DB.Model(&project).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project"})
+		return
+	}
 
 	database.DB.Preload("Creator").Preload("Assignments").Preload("Assignments.User").First(&project, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{

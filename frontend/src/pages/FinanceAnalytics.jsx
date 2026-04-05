@@ -57,7 +57,7 @@ export default function FinanceAnalytics() {
                     </div>
                     <div className="stat-info">
                         <label>Total Revenue</label>
-                        <h3>${summary.total_income.toLocaleString()}</h3>
+                        <h3>${(safeSummary.total_income || 0).toLocaleString()}</h3>
                         <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <ArrowUpRight size={14} /> Cumulative
                         </span>
@@ -69,7 +69,7 @@ export default function FinanceAnalytics() {
                     </div>
                     <div className="stat-info">
                         <label>Total Expenses</label>
-                        <h3>${summary.total_expense.toLocaleString()}</h3>
+                        <h3>${(safeSummary.total_expense || 0).toLocaleString()}</h3>
                         <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                             All Categories
                         </span>
@@ -81,10 +81,10 @@ export default function FinanceAnalytics() {
                     </div>
                     <div className="stat-info">
                         <label>Net Profit</label>
-                        <h3 style={{ color: summary.net_profit >= 0 ? '#10b981' : '#ef4444' }}>
-                            ${summary.net_profit.toLocaleString()}
+                        <h3 style={{ color: (safeSummary.net_profit || 0) >= 0 ? '#10b981' : '#ef4444' }}>
+                            ${(safeSummary.net_profit || 0).toLocaleString()}
                         </h3>
-                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>
                             After all costs
                         </span>
                     </div>
@@ -95,114 +95,82 @@ export default function FinanceAnalytics() {
                     </div>
                     <div className="stat-info">
                         <label>Profit Margin</label>
-                        <h3>{summary.total_income > 0 ? ((summary.net_profit / summary.total_income) * 100).toFixed(1) : 0}%</h3>
+                        <h3>{safeSummary.total_income > 0 ? ((safeSummary.net_profit / safeSummary.total_income) * 100).toFixed(1) : 0}%</h3>
                         <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Efficiency Ratio</span>
                     </div>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
-                {/* Income vs Expense Trend */}
-                <div className="card" style={{ padding: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <TrendingUp size={18} color="var(--primary-500)" /> Revenue vs Expenses
-                        </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 30 }}>
+                <div className="card shadow-sm" style={{ padding: 24 }}>
+                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                        <h3 style={{ margin: 0 }}>Project Revenue Matrix</h3>
+                        <BarChart3 size={18} style={{ color: '#64748b' }} />
                     </div>
-                    <div style={{ height: 350, minHeight: 350, minWidth: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={350}>
-                            <AreaChart data={safeTrend}>
-                                <defs>
-                                    <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                                <Tooltip 
-                                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}
-                                />
-                                <Area type="monotone" dataKey="income" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorInc)" name="Income" />
-                                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" name="Expense" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Expense Breakdown */}
-                <div className="card" style={{ padding: 24 }}>
-                    <h3>Expense Breakdown</h3>
-                    <div style={{ height: 350, minHeight: 350, minWidth: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={350}>
-                            <PieChart>
-                                <Pie
-                                    data={safeExpenseCategories}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    nameKey="category"
-                                >
-                                    {safeExpenseCategories.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend layout="vertical" align="right" verticalAlign="middle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                {/* Project Revenue */}
-                <div className="card" style={{ padding: 24 }}>
-                    <h3 style={{ marginBottom: 20 }}>Project-wise Revenue</h3>
-                    <div style={{ height: 300, minHeight: 300, minWidth: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
+                    <div style={{ height: 350 }}>
+                        <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={safeProjectRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="project_name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                                <Tooltip cursor={{ fill: 'var(--bg-hover)' }} />
-                                <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Revenue ($)" />
+                                <XAxis dataKey="name" fontSize={12} stroke="var(--text-muted)" />
+                                <YAxis fontSize={12} stroke="var(--text-muted)" />
+                                <Tooltip 
+                                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }} 
+                                    labelStyle={{ color: 'var(--text-app)' }} 
+                                />
+                                <Bar dataKey="revenue" fill="var(--primary-500)" radius={[4, 4, 0, 0]} barSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Income Categories */}
-                <div className="card" style={{ padding: 24 }}>
-                    <h3 style={{ marginBottom: 20 }}>Income Sources</h3>
-                    <div style={{ height: 300, minHeight: 300, minWidth: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
-                            <PieChart>
-                                <Pie
-                                    data={safeIncomeCategories}
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={100}
-                                    dataKey="value"
-                                    nameKey="category"
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                >
-                                    {safeIncomeCategories.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
+                    <div className="card shadow-sm" style={{ padding: 24, flex: 1 }}>
+                        <h3 style={{ margin: '0 0 20px 0', fontSize: '0.95rem' }}>Expense Distribution</h3>
+                        <div style={{ height: 250 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={safeExpenseCategories}
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {safeExpenseCategories.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <div className="card shadow-sm" style={{ padding: 24, marginTop: 30 }}>
+                <h3 style={{ margin: '0 0 20px 0' }}>Financial Trajectory</h3>
+                <div style={{ height: 350 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={safeTrend}>
+                            <defs>
+                                <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                            <XAxis dataKey="month" fontSize={12} stroke="var(--text-muted)" />
+                            <YAxis fontSize={12} stroke="var(--text-muted)" />
+                            <Tooltip 
+                                contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
+                                labelStyle={{ color: 'var(--text-app)' }}
+                            />
+                            <Area type="monotone" dataKey="income" stroke="#3b82f6" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="expense" stroke="#ef4444" fill="none" strokeWidth={2} strokeDasharray="5 5" />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>

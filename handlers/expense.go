@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
@@ -12,19 +10,19 @@ import (
 )
 
 type CreateExpenseInput struct {
-	Title       string    `json:"title" binding:"required"`
-	Description string    `json:"description"`
-	Amount      float64   `json:"amount" binding:"required,gt=0"`
-	Date        time.Time `json:"date" binding:"required"`
-	Category    string    `json:"category"`
+	Title       string  `json:"title" binding:"required"`
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount" binding:"required,gt=0"`
+	Date        string  `json:"date" binding:"required"`
+	Category    string  `json:"category"`
 }
 
 type UpdateExpenseInput struct {
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Amount      *float64   `json:"amount" binding:"omitempty,gt=0"`
-	Date        *time.Time `json:"date"`
-	Category    string     `json:"category"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Amount      *float64 `json:"amount" binding:"omitempty,gt=0"`
+	Date        string   `json:"date"`
+	Category    string   `json:"category"`
 }
 
 func CreateExpense(c *gin.Context) {
@@ -36,16 +34,22 @@ func CreateExpense(c *gin.Context) {
 
 	userID, _ := c.Get("user_id")
 
+	date, err := parseDate(input.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, use YYYY-MM-DD"})
+		return
+	}
+
 	expense := models.Expense{
 		Title:       input.Title,
 		Description: input.Description,
 		Amount:      input.Amount,
-		Date:        input.Date,
+		Date:        date,
 		Category:    input.Category,
 		AddedBy:     userID.(uuid.UUID),
 	}
 
-	err := database.DB.Transaction(func(tx *gorm.DB) error {
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&expense).Error; err != nil {
 			return err
 		}
@@ -118,8 +122,13 @@ func UpdateExpense(c *gin.Context) {
 	if input.Amount != nil {
 		updates["amount"] = *input.Amount
 	}
-	if input.Date != nil {
-		updates["date"] = *input.Date
+	if input.Date != "" {
+		date, err := parseDate(input.Date)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format"})
+			return
+		}
+		updates["date"] = date
 	}
 	if input.Category != "" {
 		updates["category"] = input.Category

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { projectAPI, employeeAPI, clientAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -37,11 +38,13 @@ export default function Projects() {
         e.preventDefault();
         setSaving(true);
         try {
+            const payload = { ...form };
+            if (!payload.client_id) payload.client_id = null;
             if (editing) {
-                await projectAPI.update(editing, form);
+                await projectAPI.update(editing, payload);
                 toast('Project updated successfully');
             } else {
-                await projectAPI.create(form);
+                await projectAPI.create(payload);
                 toast('Project created successfully');
             }
             setShowModal(false);
@@ -150,8 +153,11 @@ export default function Projects() {
                 if (!canEdit) return null;
 
                 return (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {hasElevated && p.pending_progress !== null && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <Link to={`/projects/${p.id}`} className="btn btn-sm btn-secondary" title="View & Manage Team">
+                                <User size={12} /> Team
+                            </Link>
+                            {hasElevated && p.pending_progress !== null && (
                             <div style={{ display: 'flex', gap: 4, background: 'var(--amber-50)', padding: 4, borderRadius: 6, border: '1px solid var(--amber-200)' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--amber-700)' }}>Pending: {p.pending_progress}%</span>
                                 <button className="btn btn-sm" style={{ padding: '2px 6px', fontSize: '0.65rem', background: 'var(--green-500)', color: 'white' }} onClick={() => handleApprove(p.id, 'approve')}>Approve</button>
@@ -245,17 +251,17 @@ export default function Projects() {
                             </div>
                             <div className="form-group">
                                 <label>Progress ({form.progress}%)</label>
-                                <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: parseInt(e.target.value) })} style={{ width: '100%' }} />
+                                <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: parseInt(e.target.value) || 0 })} style={{ width: '100%' }} />
                             </div>
                             {user?.role === 'admin' && (
                                 <>
                                     <div className="form-group">
                                         <label>Total Contract Value ($)</label>
-                                        <input type="number" value={form.total_value} onChange={e => setForm({ ...form, total_value: parseFloat(e.target.value) })} />
+                                        <input type="number" value={form.total_value} onChange={e => setForm({ ...form, total_value: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                     <div className="form-group">
                                         <label>Amount Paid ($)</label>
-                                        <input type="number" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: parseFloat(e.target.value) })} />
+                                        <input type="number" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                 </>
                             )}
