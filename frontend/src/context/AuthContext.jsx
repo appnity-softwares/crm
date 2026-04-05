@@ -39,11 +39,28 @@ export function AuthProvider({ children }) {
     const hasElevated = isAdmin || isManager;
     const isExternal = isClient || isProspect;
 
-    const canAccess = (moduleKey) => {
-        if (isAdmin || isManager) return true;
+    const canAccess = (moduleKey, action = 'read') => {
+        if (isAdmin) return true;
         if (!user) return false;
-        const perms = user.permissions ? user.permissions.split(',') : [];
-        return perms.includes(moduleKey);
+        
+        try {
+            // Support JSON granular permissions
+            const perms = JSON.parse(user.permissions || '{}');
+            if (perms[moduleKey]) {
+                const modulePerms = perms[moduleKey];
+                // If it's just a boolean true, it's legacy-style allow-all-for-module
+                if (modulePerms === true) return true;
+                // If it's a string, it might be legacy comma-separated
+                if (typeof modulePerms === 'string') return modulePerms.includes(action);
+                // If it's an object with c,r,u,d flags
+                if (modulePerms[action] === true) return true;
+            }
+        } catch (e) {
+            // Fallback for non-JSON strings
+            const perms = user.permissions ? user.permissions.split(',') : [];
+            return perms.includes(moduleKey);
+        }
+        return false;
     };
 
     return (

@@ -53,7 +53,9 @@ export const employeeAPI = {
     getOne: (id) => api.get(`/employees/${id}`),
     getStats: (id) => api.get(`/employees/${id}/stats`),
     update: (id, data) => api.put(`/employees/${id}`, data),
-    deactivate: (id) => api.delete(`/employees/${id}`),
+    activate: (id) => api.put(`/employees/${id}/activate`),
+    deactivate: (id) => api.put(`/employees/${id}`, { is_active: false }),
+    delete: (id) => api.delete(`/employees/${id}`),
 };
 
 // ── Attendance ──
@@ -106,6 +108,7 @@ export const projectAPI = {
     postUpdate: (data) => api.post(`/projects/updates`, data),
     getComments: (uid) => api.get(`/projects/updates/${uid}/comments`),
     postComment: (data) => api.post(`/projects/updates/comments`, data),
+    signSOW: (id) => api.post(`/projects/${id}/sign`),
 };
 
 // ── Payroll ──
@@ -149,6 +152,7 @@ export const dashboardAPI = {
 export const configAPI = {
     getFlags: () => api.get('/configs/flags'),
     toggleFlag: (key) => api.patch(`/configs/flags/${key}`),
+    getAuditLogs: (params) => api.get('/configs/audit', { params }),
 };
 
 // ── Notifications ──
@@ -216,7 +220,7 @@ export const chatAPI = {
     getHistory: (uid) => api.get(`/chat/history/${uid}`),
     send: (data) => api.post('/chat/send', data),
     edit: (mid, data) => api.put(`/chat/${mid}`, data),
-    remove: (mid) => api.delete(`/chat/${mid}`),
+    remove: (mid, forEveryone) => api.delete(`/chat/${mid}`, { data: { delete_for_everyone: forEveryone } }),
 };
 
 export const taskAPI = {
@@ -235,9 +239,10 @@ export const incomeAPI = {
 
 export const clientAPI = {
     getAll: (params) => api.get('/clients', { params }),
-    getOne: (id) => api.get(`/clients/${id}`),
+    get: (id) => api.get(`/clients/${id}`),
     create: (data) => api.post('/clients', data),
     update: (id, data) => api.put(`/clients/${id}`, data),
+    activate: (id) => api.put(`/clients/${id}`, { is_active: true }),
     delete: (id) => api.delete(`/clients/${id}`),
 };
 
@@ -256,17 +261,11 @@ export const trainingAPI = {
     updateEnrollment: (id, data) => api.put(`/training/enrollments/${id}`, data),
     addPayment: (id, data) => api.post(`/training/enrollments/${id}/payments`, data),
     getMyEnrollments: () => api.get('/training/enrollments/me'),
-};
-
-const jobsAPI = {
-    get: () => api.get('/jobs'),
-    create: (data) => api.post('/jobs', data),
-    delete: (id) => api.delete(`/jobs/${id}`),
+    deleteCourse: (id) => api.delete(`/training/courses/${id}`),
 };
 
 export {
     api,
     dailyReportsAPI as reportAPI,
     balanceAPI as financeAPI,
-    jobsAPI
 };

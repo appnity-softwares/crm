@@ -15,10 +15,11 @@ type ProjectUpdate struct {
 	Description string         `gorm:"type:text" json:"description"`
 	Link        string         `gorm:"size:512" json:"link"`
 	CreatedBy   uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
-	Author      User           `gorm:"foreignKey:CreatedBy" json:"author,omitempty"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	Author      User             `gorm:"foreignKey:CreatedBy" json:"author,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt   `gorm:"index" json:"-"`
+	Comments    []ProjectComment `gorm:"foreignKey:UpdateID" json:"comments,omitempty"`
 }
 
 func (pu *ProjectUpdate) BeforeCreate(tx *gorm.DB) error {

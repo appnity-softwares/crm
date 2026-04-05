@@ -212,6 +212,11 @@ func GetAllAttendance(c *gin.Context) {
 	var records []models.Attendance
 	query := database.DB.Preload("User")
 
+	// Filter by role (requires join)
+	if role := c.Query("role"); role != "" {
+		query = query.Joins("JOIN users ON users.id = attendances.user_id").Where("users.role = ?", role)
+	}
+
 	// Filter by user
 	if userID := c.Query("user_id"); userID != "" {
 		query = query.Where("user_id = ?", userID)
@@ -410,24 +415,33 @@ func StartAutoCheckoutTask() {
 
 		for range ticker.C {
 			now := time.Now()
-			// Only run auto-checkout between 17:30 and 23:59
-			if now.Hour() > 17 || (now.Hour() == 17 && now.Minute() >= 30) {
-				var toCheckout []models.Attendance
-				today := now.Truncate(24 * time.Hour)
+			today := now.Truncate(24 * time.Hour)
+			isPastCheckoutTime := now.Hour() > 17 || (now.Hour() == 17 && now.Minute() >= 30)
 
-				// Find active attendances for today (or earlier) that lack a check-out
-				database.DB.Where("check_out IS NULL AND date <= ?", today).Find(&toCheckout)
+			var toCheckout []models.Attendance
+			// Find records that need auto-checkout:
+			// 1. Records from previous days (date < today)
+			// 2. Today's records if it's currently past 5:30 PM
+			database.DB.Where("check_out IS NULL AND (date < ? OR (date = ? AND ?))", 
+				today, today, isPastCheckoutTime).Find(&toCheckout)
 
-				for _, att := range toCheckout {
-					// Set checkout to 5:30 PM of the record's date
-					co := time.Date(att.Date.Year(), att.Date.Month(), att.Date.Day(), 17, 30, 0, 0, time.Local)
-					
-					// Avoid setting checkout before checkin (edge case)
-					if co.After(att.CheckIn) {
-						att.CheckOut = &co
-						att.Remark = "Auto check-out"
-						database.DB.Save(&att)
+			for _, att := range toCheckout {
+				// Set checkout to 5:30 PM (17:30) of the record's actual date
+				loc, _ := time.LoadLocation("Asia/Kolkata")
+				if loc == nil {
+					loc = time.Local
+				}
+				co := time.Date(att.Date.Year(), att.Date.Month(), att.Date.Day(), 17, 30, 0, 0, loc)
+				
+				// Avoid setting checkout before checkin (edge case)
+				if co.After(att.CheckIn) {
+					att.CheckOut = &co
+					if att.Remark == "" {
+						att.Remark = "System Auto Check-out (5:30 PM)"
+					} else {
+						att.Remark += " [Auto Check-out]"
 					}
+					database.DB.Save(&att)
 				}
 			}
 		}

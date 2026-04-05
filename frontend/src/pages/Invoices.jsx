@@ -220,14 +220,14 @@ export default function Invoices() {
                         <div className="stat-icon green"><CheckCircle size={20} /></div>
                         <div className="stat-content">
                             <span className="stat-label">Total Received</span>
-                            <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                            <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
                         </div>
                     </div>
                     <div className="card stat-card shadow-sm">
                         <div className="stat-icon amber"><Clock size={20} /></div>
                         <div className="stat-content">
                             <span className="stat-label">Pending Collection</span>
-                            <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{invoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                            <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
                         </div>
                     </div>
                 </div>

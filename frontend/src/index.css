@@ -1484,6 +1484,18 @@ tr:last-child td {
   transform: translateY(-1px);
 }
 
+.btn-warning {
+  background: var(--amber-50);
+  color: var(--amber-500);
+  border: 1px solid var(--amber-50);
+}
+
+.btn-warning:hover {
+  background: var(--amber-500);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 .btn-success {
   background: linear-gradient(135deg, var(--green-500), var(--green-600));
   color: #fff;

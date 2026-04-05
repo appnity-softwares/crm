@@ -10,6 +10,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 	// ─── Public routes ───────────────────────────────────────────
 	api := r.Group("/api")
 	{
+		// ─── Auth (Public) ───
 		public := api.Group("/auth")
 		if authLimiter != nil {
 			public.Use(middleware.RateLimitMiddleware(authLimiter))
@@ -50,6 +51,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			employees.GET("/:id/stats", middleware.RoleGuard("admin", "manager"), handlers.GetEmployeeStats)
 			employees.POST("", middleware.RoleGuard("admin"), handlers.CreateEmployee)
 			employees.PUT("/:id", middleware.RoleGuard("admin"), handlers.UpdateEmployee)
+			employees.PUT("/:id/activate", middleware.RoleGuard("admin"), handlers.ActivateEmployee)
 			employees.DELETE("/:id", middleware.RoleGuard("admin"), handlers.DeleteEmployee)
 		}
 
@@ -123,6 +125,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			projects.GET("/:id/updates", handlers.GetProjectUpdates)
 			projects.POST("/updates/comments", handlers.CreateProjectComment)
 			projects.GET("/updates/:update_id/comments", handlers.GetProjectComments)
+			projects.POST("/:id/sign", handlers.SignProjectSOW)
 		}
 
 		// ── Payroll ──
@@ -185,6 +188,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 		{
 			configs.GET("/flags", middleware.RoleGuard("admin"), handlers.GetFeatureFlags)
 			configs.PATCH("/flags/:key", middleware.RoleGuard("admin"), handlers.ToggleFeatureFlagEx)
+			configs.GET("/audit", middleware.RoleGuard("admin"), handlers.GetAuditLogs)
 		}
 
 		// ── Finance (Balance) ──
@@ -258,6 +262,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			training.POST("/courses", middleware.RoleGuard("admin", "manager"), handlers.CreateCourse)
 			training.GET("/courses", handlers.GetCourses)
 			training.PUT("/courses/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateCourse)
+			training.DELETE("/courses/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteCourse)
 
 			// Enrollments
 			training.POST("/enrollments", middleware.RoleGuard("admin", "manager"), handlers.EnrollStudent)
@@ -267,12 +272,5 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			training.GET("/enrollments/me", middleware.RoleGuard("trainee", "alumni"), handlers.GetMyEnrollments)
 		}
 
-		// ── Job Board ──
-		jobs := protected.Group("/jobs")
-		{
-			jobs.GET("", handlers.GetJobs)
-			jobs.POST("", middleware.RoleGuard("admin", "manager"), handlers.CreateJob)
-			jobs.DELETE("/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteJob)
-		}
 	}
 }

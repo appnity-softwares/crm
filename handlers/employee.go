@@ -183,7 +183,26 @@ func UpdateEmployee(c *gin.Context) {
 	})
 }
 
-// DeleteEmployee soft-deactivates an employee (admin only)
+// ActivateEmployee reactivates an employee
+func ActivateEmployee(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid employee ID"})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Employee not found"})
+		return
+	}
+
+	database.DB.Model(&user).Update("is_active", true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Employee activated successfully"})
+}
+
+// DeleteEmployee permanently deletes an employee (admin only)
 func DeleteEmployee(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -197,10 +216,13 @@ func DeleteEmployee(c *gin.Context) {
 		return
 	}
 
-	// Soft deactivate rather than delete
-	database.DB.Model(&user).Update("is_active", false)
+	// Actually delete from database (soft delete via GORM is fine as it has DeletedAt)
+	if err := database.DB.Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete employee"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Employee deactivated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Employee deleted successfully"})
 }
 
 func UpdateProfile(c *gin.Context) {

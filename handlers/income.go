@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"github.com/pushp314/erp-crm/utils"
 	"gorm.io/gorm"
 )
 
@@ -154,6 +155,8 @@ func UpdateIncome(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update income"})
 		return
 	}
+
+	utils.LogActivity(c, "income", "update", id, updates)
 
 	database.DB.Preload("Project").First(&income, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{"message": "Income updated", "income": income})

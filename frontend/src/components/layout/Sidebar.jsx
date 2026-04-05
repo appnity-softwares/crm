@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
     LayoutDashboard, Users, Clock, FolderKanban, FileText,
-    DollarSign, Receipt, UserPlus, LogOut, User, Sun, Moon, Menu, X, ClipboardList, ShieldCheck, PieChart, MessageSquare, LifeBuoy, BookOpen, GraduationCap, Briefcase
+    DollarSign, Receipt, UserPlus, LogOut, User, Sun, Moon, Menu, X, ClipboardList, ShieldCheck, PieChart, MessageSquare, LifeBuoy, BookOpen, GraduationCap, Briefcase, Settings as SettingsIcon
 } from 'lucide-react';
 
 const navStructure = [
@@ -27,7 +27,7 @@ const navStructure = [
         section: 'Training', items: [
             { to: '/training/courses', icon: BookOpen, label: 'Curricula/Courses', module: 'employees' },
             { to: '/training/students', icon: GraduationCap, label: 'Trainees/Students', module: 'employees' },
-            { to: '/jobs', icon: Briefcase, label: 'Job Board', module: 'employees' },
+            { to: '/training/attendance', icon: Clock, label: 'Trainee Attendance' },
         ]
     },
     {
@@ -55,6 +55,7 @@ const navStructure = [
     {
         section: 'System', items: [
             { to: '/role-access', icon: ShieldCheck, label: 'Role Access', module: 'role-access' },
+            { to: '/settings', icon: SettingsIcon, label: 'Settings', module: 'role-access' },
         ]
     },
     {

@@ -5,10 +5,10 @@ import { useToast } from '../components/ui/Toast';
 import { employeeAPI } from '../services/api';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
-import { UserPlus, Eye, Edit2 } from 'lucide-react';
+import { UserPlus, Eye, Edit2, UserCheck, UserMinus, Trash2 } from 'lucide-react';
 
 export default function Employees() {
-    const { isAdmin, user } = useAuth();
+    const { isAdmin, user, hasElevated } = useAuth();
     const toast = useToast();
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -71,6 +71,23 @@ export default function Employees() {
         } catch { toast('Failed to deactivate', 'error'); }
     };
 
+    const handleActivate = async (id) => {
+        try {
+            await employeeAPI.activate(id);
+            toast('Employee activated successfully', 'success');
+            loadData();
+        } catch { toast('Failed to activate employee', 'error'); }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this employee account? This action cannot be undone.')) return;
+        try {
+            await employeeAPI.delete(id);
+            toast('Employee deleted successfully', 'success');
+            loadData();
+        } catch (err) { toast(err.response?.data?.error || 'Failed to delete employee', 'error'); }
+    };
+
     const columns = [
         { header: 'ID', key: 'uid', accessor: 'id', sortable: false, render: r => <span style={{ color: 'var(--text-muted)' }}>...{r.id.slice(0, 4)}</span> },
         {
@@ -126,18 +143,37 @@ export default function Employees() {
             sortable: false,
             render: (row) => (
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(row)}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(row)} title="Edit">
                         <Edit2 size={12} />
                     </button>
-                    <Link to={`/employees/${row.id}`} className="btn btn-sm btn-secondary">
+                    <Link to={`/employees/${row.id}`} className="btn btn-sm btn-secondary" title="View">
                         <Eye size={12} />
                     </Link>
+                    {row.is_active ? (
+                        <button
+                            className="btn btn-sm btn-warning"
+                            onClick={() => handleDeactivate(row.id)}
+                            disabled={user.id === row.id}
+                            title="Deactivate Account"
+                        >
+                            <UserMinus size={12} /> Deactivate
+                        </button>
+                    ) : (
+                        <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleActivate(row.id)}
+                            title="Activate Account"
+                        >
+                            <UserCheck size={12} /> Activate
+                        </button>
+                    )}
                     <button
                         className="btn btn-sm btn-danger"
-                        onClick={() => handleDeactivate(row.id)}
-                        disabled={user.id === row.id || !row.is_active}
+                        onClick={() => handleDelete(row.id)}
+                        disabled={user.id === row.id}
+                        title="Permanently Delete Account"
                     >
-                        Deactivate
+                        <Trash2 size={12} /> Delete
                     </button>
                 </div>
             )
@@ -168,6 +204,25 @@ export default function Employees() {
                     data={employees}
                     searchable={true}
                     pageSize={10}
+                    filters={[
+                        {
+                            key: 'is_active',
+                            label: 'Status',
+                            options: [
+                                { value: 'true', label: 'Active Only' },
+                                { value: 'false', label: 'Inactive Only' }
+                            ]
+                        },
+                        {
+                            key: 'role',
+                            label: 'Role',
+                            options: [
+                                { value: 'admin', label: 'Admin' },
+                                { value: 'manager', label: 'Manager' },
+                                { value: 'employee', label: 'Employee' }
+                            ]
+                        }
+                    ]}
                     emptyMessage="No employees found in the system."
                 />
             </div>

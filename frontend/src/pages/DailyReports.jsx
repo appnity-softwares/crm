@@ -176,8 +176,8 @@ export default function DailyReports() {
                 return <span className="badge amber">{KPI_TEMPLATES[role]?.name || role}</span>;
             }
         },
-        {
-            header: 'Key Metrics',
+        { 
+            header: 'Key Metrics', 
             accessor: 'metrics',
             render: r => {
                 const m = parseMetrics(r.metrics);
@@ -185,10 +185,14 @@ export default function DailyReports() {
                     .filter(([k, v]) => k !== 'role_type' && v !== '')
                     .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
                     .join(' | ');
-                return <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{items.length > 50 ? items.substring(0, 50) + '...' : items}</span>;
+                return <div className="truncated-metrics" title={items}>{items || '—'}</div>;
             }
         },
-        { header: 'Notes', accessor: 'notes', render: r => <span style={{ fontSize: '0.85rem' }}>{r.notes || '—'}</span> },
+        { 
+            header: 'Notes', 
+            accessor: 'notes', 
+            render: r => <div className="truncated-notes" title={r.notes}>{r.notes || '—'}</div> 
+        },
         {
             header: 'Status',
             accessor: 'status',
@@ -228,7 +232,23 @@ export default function DailyReports() {
     const [viewDetail, setViewDetail] = useState(null);
 
     return (
-        <div>
+        <div className="reports-page-wrapper">
+            <style>{`
+                .reports-page-wrapper { width: 100%; max-width: 100vw; overflow-x: hidden; }
+                .truncated-metrics, .truncated-notes { 
+                    max-width: 180px; 
+                    white-space: nowrap; 
+                    overflow: hidden; 
+                    text-overflow: ellipsis; 
+                    font-size: 0.85rem; 
+                    color: var(--text-muted);
+                }
+                @media (max-width: 768px) {
+                    .truncated-metrics, .truncated-notes { max-width: 100px; }
+                    .header-actions { flex-direction: column; gap: 8px; width: 100%; }
+                    .header-actions button { width: 100%; }
+                }
+            `}</style>
             <div className="header">
                 <div className="header-left">
                     <h1>Daily KPI Reports</h1>

@@ -7,7 +7,11 @@ import DataTable from '../components/ui/DataTable';
 import { Plus, Edit2, Trash2, TrendingUp } from 'lucide-react';
 
 export default function Income() {
-    const { isAdmin } = useAuth();
+    const { isAdmin, canAccess } = useAuth();
+    const canWrite = canAccess('income', 'create') || canAccess('income', 'update');
+    const canDelete = canAccess('income', 'delete');
+    // For 'show financials', we can use a custom logic or just 'read'
+    const showFinancials = canAccess('income', 'read'); 
     const toast = useToast();
     const [incomeRecords, setIncomeRecords] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -28,12 +32,15 @@ export default function Income() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [{ data: incomeData }, { data: projectData }] = await Promise.all([
+            const res = await Promise.all([
                 incomeAPI.getAll(),
                 projectAPI.getAll()
             ]);
-            setIncomeRecords(incomeData || []);
-            setProjects(projectData.projects || []);
+            const incomeData = res[0].data;
+            const projectData = res[1].data;
+            
+            setIncomeRecords(incomeData?.income || []);
+            setProjects(projectData?.projects || []);
         } catch { 
             toast('Failed to load data', 'error'); 
         } finally { 
@@ -115,29 +122,36 @@ export default function Income() {
         { 
             header: 'Amount', 
             accessor: 'amount',
-            render: r => <span style={{ fontWeight: 600, color: '#10b981' }}>+ ${r.amount.toLocaleString()}</span>
+            render: r => {
+                if (!showFinancials && !isAdmin) return <span style={{ color: 'var(--text-muted)' }}>*** Confidential ***</span>;
+                return <span style={{ fontWeight: 600, color: '#10b981' }}>+ ${r.amount.toLocaleString()}</span>;
+            }
         }
     ];
 
-    if (isAdmin) {
+    if (isAdmin || canWrite || canDelete) {
         columns.push({
             header: 'Actions',
             accessor: 'id',
             sortable: false,
             render: (row) => (
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(row)}>
-                        <Edit2 size={12} />
-                    </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
-                        <Trash2 size={12} />
-                    </button>
+                    {(isAdmin || canAccess('income', 'update')) && (
+                        <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(row)}>
+                            <Edit2 size={12} />
+                        </button>
+                    )}
+                    {(isAdmin || canDelete) && (
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(row.id)}>
+                            <Trash2 size={12} />
+                        </button>
+                    )}
                 </div>
             )
         });
     }
 
-    const totalIncome = incomeRecords.reduce((sum, r) => sum + r.amount, 0);
+    const totalIncome = (Array.isArray(incomeRecords) ? incomeRecords : []).reduce((sum, r) => sum + r.amount, 0);
 
     if (loading) return <div className="spinner" />;
 

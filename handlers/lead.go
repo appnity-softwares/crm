@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
+	"github.com/pushp314/erp-crm/utils"
 	"gorm.io/gorm"
 )
 
@@ -83,6 +84,8 @@ func CreateLead(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create lead"})
 		return
 	}
+
+	utils.LogActivity(c, "lead", "create", lead.ID.String(), lead)
 
 	// Trigger notification for the assigned user
 	if lead.AssignedTo != nil {
@@ -231,6 +234,8 @@ func UpdateLead(c *gin.Context) {
 	}
 
 	database.DB.Model(&lead).Updates(updates)
+
+	utils.LogActivity(c, "lead", "update", id.String(), updates)
 
 	database.DB.Preload("Assignee").First(&lead, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{
@@ -402,6 +407,8 @@ func ConvertLeadToClient(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert lead: " + err.Error()})
 		return
 	}
+
+	utils.LogActivity(c, "lead", "convert", id.String(), input)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Lead converted to client successfully! Project created.",

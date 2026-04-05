@@ -32,6 +32,10 @@ export default function Students() {
     const [payingEnrollment, setPayingEnrollment] = useState(null);
     const [paymentForm, setPaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], description: 'Installment' });
 
+    const [showAddTraineeModal, setShowAddTraineeModal] = useState(false);
+    const [traineeForm, setTraineeForm] = useState({ name: '', email: '', password: '', role: 'trainee' });
+    const [filterStatus, setFilterStatus] = useState('all');
+
     const load = async () => {
         setLoading(true);
         try {
@@ -42,7 +46,7 @@ export default function Students() {
             ]);
             setEnrollments(enRes.data || []);
             setCourses(coRes.data || []);
-            setAllStudents(usRes.data.filter(u => u.role === 'trainee') || []);
+            setAllStudents(usRes.data || []);
         } catch { } finally { setLoading(false); }
     };
 
@@ -106,6 +110,22 @@ export default function Students() {
         } finally { setSaving(false); }
     };
 
+    const handleAddTrainee = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await employeeAPI.create(traineeForm);
+            toast('New trainee record created!');
+            setShowAddTraineeModal(false);
+            setTraineeForm({ name: '', email: '', password: '', role: 'trainee' });
+            load();
+        } catch (err) {
+            toast(err.response?.data?.error || 'Failed to create trainee', 'error');
+        } finally { setSaving(false); }
+    };
+
+    const filteredEnrollments = enrollments.filter(e => filterStatus === 'all' || e.status === filterStatus);
+
     const columns = [
         { 
             header: 'Student', 
@@ -138,15 +158,24 @@ export default function Students() {
             render: r => <span className={`badge ${r.status === 'active' ? 'blue' : r.status === 'completed' ? 'green' : 'gray'}`}>{r.status}</span> 
         },
         { 
-            header: 'Payments', 
+            header: 'Fee Progress', 
             accessor: 'paid_amount', 
-            render: r => (
-                <div style={{ fontSize: '0.85rem' }}>
-                    <span style={{ fontWeight: 600 }}>${r.paid_amount}</span> / <span style={{ color: 'var(--text-muted)' }}>${r.total_fee}</span>
-                </div>
-            )
+            render: r => {
+                const pct = Math.min(100, Math.round((r.paid_amount / r.total_fee) * 100) || 0);
+                return (
+                    <div style={{ width: 120 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
+                            <span>${r.paid_amount}</span>
+                            <span style={{ color: pct === 100 ? 'var(--green-600)' : 'var(--text-muted)' }}>{pct}%</span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--green-500)' : 'var(--primary-500)' }} />
+                        </div>
+                    </div>
+                );
+            }
         },
-        { header: 'Started', accessor: 'start_date', render: r => new Date(r.start_date).toLocaleDateString() },
+        { header: 'Current Progress', accessor: 'completed_topic', render: r => <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{r.completed_topic || 'Not started'}</span> },
         {
             header: 'Actions',
             key: 'actions',
@@ -176,8 +205,11 @@ export default function Students() {
                     <p>Track student progress, fees, and training outcomes</p>
                 </div>
                 <div className="header-actions">
+                    <button className="btn btn-secondary" onClick={() => setShowAddTraineeModal(true)}>
+                        <UserPlus size={15} /> Create Trainee Record
+                    </button>
                     <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ student_id: '', course_id: '', status: 'active', start_date: new Date().toISOString().split('T')[0], end_date: '', total_fee: '', paid_amount: '0', completed_topic: '', cert_link: '', offer_link: '' }); setShowModal(true); }}>
-                        <UserPlus size={15} /> Enroll Student
+                        <GraduationCap size={15} /> Enroll Student
                     </button>
                 </div>
             </div>
@@ -207,16 +239,33 @@ export default function Students() {
                     </div>
                     <div className="stat-info">
                         <label>Revenue Collected</label>
-                        <h3>${enrollments.reduce((sum, e) => sum + (e.paid_amount || 0), 0).toFixed(2)}</h3>
+                        <h3>₹{(Array.isArray(enrollments) ? enrollments : []).reduce((sum, e) => sum + (e.paid_amount || 0), 0).toFixed(2)}</h3>
                     </div>
                 </div>
+            </div>
+            <div className="tabs" style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
+                {['all', 'active', 'completed', 'dropped', 'on_hold'].map(s => (
+                    <button 
+                        key={s} 
+                        className={`tab-btn ${filterStatus === s ? 'active' : ''}`}
+                        onClick={() => setFilterStatus(s)}
+                        style={{
+                            padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)',
+                            background: filterStatus === s ? 'var(--primary-500)' : 'var(--bg-card)',
+                            color: filterStatus === s ? '#fff' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', textTransform: 'capitalize'
+                        }}
+                    >
+                        {s.replace('_', ' ')}
+                    </button>
+                ))}
             </div>
 
             <div className="card">
                 {loading ? <div className="spinner" /> : (
                     <DataTable
                         columns={columns}
-                        data={enrollments}
+                        data={filteredEnrollments}
                         pageSize={15}
                         searchable={true}
                         emptyMessage="No student enrollments found."
@@ -229,10 +278,15 @@ export default function Students() {
                     <form onSubmit={handleSubmit}>
                         <div className="form-grid">
                             <div className="form-group">
-                                <label>Select Student *</label>
+                                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    Select Student * 
+                                    {!editing && <span onClick={() => { setShowModal(false); setShowAddTraineeModal(true); }} style={{ color: 'var(--primary-600)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' }}>+ Add New Trainee</span>}
+                                </label>
                                 <select required value={form.student_id} onChange={e => setForm({ ...form, student_id: e.target.value })} disabled={!!editing}>
-                                    <option value="">-- Choose Trainee --</option>
-                                    {allStudents.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+                                    <option value="">-- Choose Person --</option>
+                                    {allStudents.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="form-group">

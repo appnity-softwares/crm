@@ -37,6 +37,7 @@ export default function Attendance() {
     const load = async () => {
         setLoading(true);
         const params = {};
+        if (hasElevated && !filterEmployee) params.role = 'employee'; // Default to staff
         if (filterEmployee) params.user_id = filterEmployee;
         
         if (filterDate) {
@@ -130,11 +131,19 @@ export default function Attendance() {
     const formatTime = (t) => t ? new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
     const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
+    const calculateHours = (cin, cout) => {
+        if (!cin || !cout) return '—';
+        const diff = new Date(cout) - new Date(cin);
+        const hours = (diff / (1000 * 60 * 60)).toFixed(1);
+        return hours + 'h';
+    };
+
     const columns = [
         { header: 'Employee', accessor: r => r.user?.name || '—', show: hasElevated },
         { header: 'Date', accessor: 'date', render: r => formatDate(r.date) },
         { header: 'Check In', accessor: 'check_in', render: r => formatTime(r.check_in) },
         { header: 'Check Out', accessor: 'check_out', render: r => formatTime(r.check_out) },
+        { header: 'Duration', key: 'duration', render: r => calculateHours(r.check_in, r.check_out) },
         { 
             header: 'Status', 
             accessor: 'status', 
@@ -185,8 +194,8 @@ export default function Attendance() {
                         </>
                     ) : (
                         <div style={{ display: 'flex', gap: 10 }}>
-                            {records.some(r => r.user_id === user.id && r.date?.split('T')[0] === new Date().toISOString().split('T')[0] && !r.check_out) && (
-                                <button className="btn btn-secondary" onClick={async () => {
+                            {records.some(r => r.user_id === user.id && !r.check_out) && (
+                                <button className="btn btn-warning" onClick={async () => {
                                     if(!window.confirm('Confirm Check-out?')) return;
                                     try {
                                         await attendanceAPI.checkOut();
@@ -206,6 +215,27 @@ export default function Attendance() {
             </div>
 
             <div className="page-content">
+                {!hasElevated && records.some(r => r.date?.split('T')[0] === new Date().toISOString().split('T')[0]) && (
+                    <div className="card" style={{ marginBottom: 20, padding: '16px 20px', background: 'var(--primary-50)', border: '1px solid var(--primary-100)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ margin: 0, color: 'var(--primary-700)' }}>Today's Summary</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--primary-600)', margin: '4px 0 0' }}>
+                                    Checked in at: <strong>{formatTime(records.find(r => r.date?.split('T')[0] === new Date().toISOString().split('T')[0])?.check_in)}</strong>
+                                </p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--primary-600)', textTransform: 'uppercase', fontWeight: 600 }}>Duration</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-700)' }}>
+                                    {calculateHours(
+                                        records.find(r => r.date?.split('T')[0] === new Date().toISOString().split('T')[0])?.check_in,
+                                        records.find(r => r.date?.split('T')[0] === new Date().toISOString().split('T')[0])?.check_out || new Date()
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {hasElevated && (
                     <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
                         <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>

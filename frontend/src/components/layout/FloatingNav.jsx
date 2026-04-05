@@ -20,12 +20,17 @@ const combinedNav = [
     { to: '/training/courses', icon: BookOpen, label: 'Curricula', module: 'employees' },
     { to: '/training/students', icon: GraduationCap, label: 'Trainees', module: 'employees' },
     { to: '/role-access', icon: ShieldCheck, label: 'Role Access', module: 'role-access' },
+    { to: '/training/attendance', icon: Clock, label: 'My Sessions', role: 'trainee' },
     { to: '/profile', icon: User, label: 'Profile' },
 ];
 
 export default function FloatingNav() {
-    const { canAccess } = useAuth();
-    const navItems = combinedNav.filter(item => !item.module || canAccess(item.module));
+    const { canAccess, user } = useAuth();
+    const navItems = combinedNav.filter(item => {
+        if (item.module && !canAccess(item.module)) return false;
+        if (item.role && user?.role !== item.role) return false;
+        return true;
+    });
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 

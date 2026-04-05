@@ -31,7 +31,14 @@ export default function FinanceAnalytics() {
     if (loading) return <div className="spinner" />;
     if (!data) return <div className="error">No data available</div>;
 
-    const { summary, trend, income_categories, expense_categories, project_revenue } = data;
+    const { summary, trend, income_categories, expense_categories, project_revenue } = data || {};
+    
+    // Defensive checks for charts
+    const safeExpenseCategories = expense_categories || [];
+    const safeIncomeCategories = income_categories || [];
+    const safeTrend = trend || [];
+    const safeProjectRevenue = project_revenue || [];
+    const safeSummary = summary || { total_income: 0, total_expense: 0, net_profit: 0 };
 
     return (
         <div className="page-content">
@@ -135,7 +142,7 @@ export default function FinanceAnalytics() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={expense_categories}
+                                    data={safeExpenseCategories}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
@@ -144,7 +151,7 @@ export default function FinanceAnalytics() {
                                     dataKey="value"
                                     nameKey="category"
                                 >
-                                    {expense_categories.map((entry, index) => (
+                                    {safeExpenseCategories.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -180,7 +187,7 @@ export default function FinanceAnalytics() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={income_categories}
+                                    data={safeIncomeCategories}
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={100}
@@ -188,7 +195,7 @@ export default function FinanceAnalytics() {
                                     nameKey="category"
                                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                 >
-                                    {income_categories.map((entry, index) => (
+                                    {safeIncomeCategories.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
                                     ))}
                                 </Pie>

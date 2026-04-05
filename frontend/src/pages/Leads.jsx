@@ -135,6 +135,7 @@ export default function Leads() {
         { header: 'Name', accessor: 'name', render: r => <span style={{ fontWeight: 600 }}>{r.name}</span> },
         { header: 'Company', accessor: 'company', render: r => r.company || '—' },
         { header: 'Email', accessor: 'email', render: r => r.email || '—' },
+        { header: 'Phone', accessor: 'phone', render: r => r.phone || '—' },
         { 
             header: 'Status', 
             accessor: 'status', 
@@ -255,6 +256,10 @@ export default function Leads() {
                             <div className="form-group">
                                 <label>Email</label>
                                 <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Phone Number</label>
+                                <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
                             </div>
                             <div className="form-group">
                                 <label>Status</label>

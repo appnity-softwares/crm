@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X } from 'lucide-react';
+import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -17,10 +17,13 @@ export default function Chat() {
     const [editingMsg, setEditingMsg] = useState(null);
     const [editText, setEditText] = useState('');
     const [mobileView, setMobileView] = useState('list');
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
     
     const scrollRef = useRef();
+    const scrollContainerRef = useRef();
     const inputRef = useRef();
     const pollingRef = useRef();
+    const isAtBottom = useRef(true);
 
     useEffect(() => {
         document.body.classList.add('chat-page-active');
@@ -57,14 +60,32 @@ export default function Chat() {
     useEffect(() => {
         if (!selectedUser) return;
         loadHistory(selectedUser.id);
+        setIsFirstLoad(true);
         if (pollingRef.current) clearInterval(pollingRef.current);
         pollingRef.current = setInterval(() => loadHistory(selectedUser.id), 3000);
         return () => clearInterval(pollingRef.current);
     }, [selectedUser, loadHistory]);
 
+    const handleScroll = (e) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        const buffer = 50;
+        isAtBottom.current = scrollHeight - scrollTop - clientHeight < buffer;
+    };
+
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (messages.length > 0) {
+            const container = scrollContainerRef.current;
+            if (isFirstLoad) {
+                // Instantly go to bottom on first load
+                container.scrollTop = container.scrollHeight;
+                setIsFirstLoad(false);
+                isAtBottom.current = true;
+            } else if (isAtBottom.current) {
+                // Only scroll smooth if we were already at bottom
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
+        }
+    }, [messages, isFirstLoad]);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -76,7 +97,7 @@ export default function Chat() {
 
         // Basic URL detection for type
         let msgType = 'text';
-        if (content.match(/\.(jpeg|jpg|gif|png)$/) != null) msgType = 'image';
+        if (content.match(/^https?:\/\/[^\s]+?\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) msgType = 'image';
         else if (content.startsWith('http')) msgType = 'link';
 
         try {
@@ -85,6 +106,7 @@ export default function Chat() {
                 content,
                 type: msgType 
             });
+            isAtBottom.current = true;
             loadHistory(selectedUser.id);
         } catch (err) {
             console.error('Failed to send:', err);
@@ -107,14 +129,20 @@ export default function Chat() {
         }
     };
 
-    const handleDelete = async (mid) => {
-        if (!window.confirm('Delete message?')) return;
+    const handleDelete = async (mid, forEveryone = false) => {
+        const confirmMsg = forEveryone ? 'Delete for everyone?' : 'Delete for you?';
+        if (!window.confirm(confirmMsg)) return;
         try {
-            await chatAPI.remove(mid);
+            await chatAPI.remove(mid, forEveryone);
             loadHistory(selectedUser.id);
         } catch (err) {
             console.error('Delete failed:', err);
         }
+    };
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        toast('Copied to clipboard', 'success');
     };
 
     const formatTime = (dateStr) => {
@@ -184,7 +212,7 @@ export default function Chat() {
                                 </div>
                             </div>
 
-                            <div className="chat-messages">
+                            <div className="chat-messages" ref={scrollContainerRef} onScroll={handleScroll}>
                                 {messages.map((m) => {
                                     const isMine = m.sender_id === me.id;
                                     const sender = isMine ? me : selectedUser;
@@ -203,19 +231,52 @@ export default function Chat() {
                                                 {m.type === 'image' ? (
                                                     <img src={m.content} alt="shared" className="chat-img-preview" />
                                                 ) : (
-                                                    <div className="chat-md-content">
-                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                                                    </div>
+                                                <div className="chat-md-content">
+                                                    <ReactMarkdown 
+                                                        remarkPlugins={[remarkGfm]}
+                                                        components={{
+                                                            a: ({node, ...props}) => {
+                                                                const isImg = props.href?.match(/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/i);
+                                                                if (isImg) return <img src={props.href} alt="shared" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 8, display: 'block' }} />;
+                                                                return <a {...props} target="_blank" rel="noopener noreferrer" />;
+                                                            },
+                                                            p: ({children}) => <p style={{ whiteSpace: 'pre-wrap' }}>{children}</p>
+                                                        }}
+                                                    >
+                                                        {m.content}
+                                                    </ReactMarkdown>
+                                                </div>
                                                 )}
                                                 <div className="chat-bubble-meta">
                                                     {m.is_edited && <span className="edited-label">(edited)</span>}
                                                     <span className="chat-bubble-time">{formatTime(m.created_at)}</span>
                                                     <StatusIcon status={m.status} isMine={isMine} />
                                                     
-                                                    {isMine && (
+                                                    {isMine ? (
                                                         <div className="msg-actions">
-                                                            {canEdit(m) && <button onClick={() => { setEditingMsg(m); setEditText(m.content); }}><Edit2 size={12} /></button>}
-                                                            <button onClick={() => handleDelete(m.id)}><Trash2 size={12} /></button>
+                                                            <button onClick={() => copyToClipboard(m.content)} title="Copy Raw Content">
+                                                                <Copy size={12} />
+                                                            </button>
+                                                            {canEdit(m) && (
+                                                                <button onClick={() => { setEditingMsg(m); setEditText(m.content); }} title="Edit">
+                                                                    <Edit2 size={12} />
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => handleDelete(m.id, false)} title="Delete for me">
+                                                                <UserMinus size={12} />
+                                                            </button>
+                                                            <button onClick={() => handleDelete(m.id, true)} className="text-danger" title="Delete for everyone">
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="msg-actions">
+                                                            <button onClick={() => copyToClipboard(m.content)} title="Copy Raw Content">
+                                                                <Copy size={12} />
+                                                            </button>
+                                                            <button onClick={() => handleDelete(m.id, false)} title="Hide for me">
+                                                                <X size={12} />
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -298,10 +359,22 @@ export default function Chat() {
                 .chat-bubble--mine { background: var(--primary-500); color: #fff; border-bottom-right-radius: 2px; }
                 .chat-bubble--theirs { background: var(--bg-card); color: var(--text-primary); border-bottom-left-radius: 2px; border: 1px solid var(--border); }
                 
-                .chat-md-content { font-size: 0.9rem; white-space: pre-wrap; }
-                .chat-md-content p { margin-bottom: 8px; }
-                .chat-md-content pre { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 6px; overflow-x: auto; margin: 10px 0; }
-                .chat-img-preview { max-width: 100%; border-radius: 8px; margin-bottom: 5px; }
+                .chat-md-content { font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; }
+                .chat-md-content p { margin-bottom: 12px; line-height: 1.5; }
+                .chat-md-content p:last-child { margin-bottom: 0; }
+                .chat-md-content code { background: rgba(0,0,0,0.15); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
+                .chat-bubble--mine .chat-md-content code { background: rgba(255,255,255,0.2); }
+                .chat-md-content pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 0.85rem; }
+                .chat-md-content pre code { background: none; padding: 0; border-radius: 0; color: inherit; }
+                .chat-md-content a { color: var(--primary-500); text-decoration: underline; text-underline-offset: 2px; }
+                .chat-bubble--mine .chat-md-content a { color: #fff; font-weight: 600; }
+                .chat-md-content ul, .chat-md-content ol { padding-left: 20px; margin-bottom: 12px; }
+                .chat-md-content li { margin-bottom: 4px; }
+                .chat-md-content table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 0.85rem; }
+                .chat-md-content th, .chat-md-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+                .chat-md-content th { background: rgba(0,0,0,0.05); }
+                .chat-img-preview { max-width: 100%; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: transform 0.2s; box-shadow: var(--shadow-sm); }
+                .chat-img-preview:hover { transform: scale(1.02); }
                 
                 .chat-bubble-meta { font-size: 0.65rem; display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin-top: 5px; opacity: 0.8; }
                 .status-seen { color: #fff; }

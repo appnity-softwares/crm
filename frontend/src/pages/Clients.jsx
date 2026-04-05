@@ -7,7 +7,7 @@ import DataTable from '../components/ui/DataTable';
 import { UserPlus, Eye, Edit2, Trash2, Mail, Phone, Briefcase, DollarSign, Ticket, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 export default function Clients() {
-    const { isAdmin } = useAuth();
+    const { isAdmin, hasElevated } = useAuth();
     const toast = useToast();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -111,19 +111,37 @@ export default function Clients() {
                     <button className="btn btn-sm btn-secondary" onClick={() => fetchDetail(row.id)} title="View Detail">
                         <Eye size={12} />
                     </button>
-                    {isAdmin && (
+                    {hasElevated && (
                         <>
                             <button className="btn btn-sm btn-secondary" onClick={() => {
                                 setEditing(row.id);
                                 setForm({ name: row.name, email: row.email, password: '', role: 'client', phone: row.phone || '' });
                                 setShowModal(true);
                             }} title="Edit"><Edit2 size={12} /></button>
-                            <button className="btn btn-sm btn-danger" onClick={async () => {
-                                if(window.confirm('Deactivate client?')) {
-                                    await clientAPI.delete(row.id);
+                            {row.is_active ? (
+                                <button className="btn btn-sm btn-warning" onClick={async () => {
+                                    if(window.confirm('Deactivate client?')) {
+                                        await clientAPI.delete(row.id);
+                                        toast('Client deactivated');
+                                        loadData();
+                                    }
+                                }} title="Deactivate"><UserMinus size={12} /></button>
+                            ) : (
+                                <button className="btn btn-sm btn-success" onClick={async () => {
+                                    await clientAPI.activate(row.id);
+                                    toast('Client activated');
                                     loadData();
-                                }
-                            }} title="Deactivate"><Trash2 size={12} /></button>
+                                }} title="Activate"><UserCheck size={12} /></button>
+                            )}
+                            {isAdmin && (
+                                <button className="btn btn-sm btn-danger" onClick={async () => {
+                                    if(window.confirm('PERMANENTLY DELETE this client?')) {
+                                        // Hard delete endpoint needed or reuse delete if it handles it
+                                        await clientAPI.delete(row.id); 
+                                        loadData();
+                                    }
+                                }} title="Delete"><Trash2 size={12} /></button>
+                            )}
                         </>
                     )}
                 </div>
@@ -149,7 +167,22 @@ export default function Clients() {
 
             <div className="card">
                 {loading ? <div className="spinner" /> : (
-                    <DataTable columns={columns} data={clients} searchable={true} pageSize={10} />
+                    <DataTable 
+                        columns={columns} 
+                        data={clients} 
+                        searchable={true} 
+                        pageSize={10} 
+                        filters={[
+                            {
+                                key: 'is_active',
+                                label: 'Status',
+                                options: [
+                                    { value: 'true', label: 'Active Only' },
+                                    { value: 'false', label: 'Inactive Only' }
+                                ]
+                            }
+                        ]}
+                    />
                 )}
             </div>
 

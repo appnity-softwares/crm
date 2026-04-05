@@ -52,11 +52,6 @@ export default function TraineeDashboard() {
                     <p>Track your learning progress, attendance, and certificates</p>
                 </div>
                 <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-                    {user?.role === 'alumni' && (
-                        <Link to="/jobs" className="btn btn-primary" style={{ gap: 8 }}>
-                            <Briefcase size={16} /> View Job Board
-                        </Link>
-                    )}
                     <Link to="/chat" className="btn btn-secondary" style={{ gap: 8 }}>
                         <MessageSquare size={16} /> Open Company Chat
                     </Link>

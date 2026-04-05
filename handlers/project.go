@@ -13,20 +13,27 @@ import (
 )
 
 type CreateProjectInput struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	Status      string `json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
-	StartDate   string `json:"start_date" binding:"required"`
-	EndDate     string `json:"end_date"`
+	Name        string     `json:"name" binding:"required"`
+	Description string     `json:"description"`
+	Status      string     `json:"status" binding:"omitempty,oneof=planning active on_hold completed under_maintenance cancelled"`
+	StartDate   string     `json:"start_date" binding:"required"`
+	EndDate     string     `json:"end_date"`
+	ClientID    *uuid.UUID `json:"client_id"`
+	TotalValue  float64    `json:"total_value"`
+	AmountPaid  float64    `json:"amount_paid"`
+	Progress    int        `json:"progress"`
 }
 
 type UpdateProjectInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Status      string `json:"status" binding:"omitempty,oneof=planning active on_hold completed"`
-	StartDate   string `json:"start_date"`
-	EndDate     string `json:"end_date"`
-	Progress    *int   `json:"progress"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Status      string     `json:"status" binding:"omitempty,oneof=planning active on_hold completed under_maintenance cancelled"`
+	StartDate   string     `json:"start_date"`
+	EndDate     string     `json:"end_date"`
+	Progress    *int       `json:"progress"`
+	ClientID    *uuid.UUID `json:"client_id"`
+	TotalValue  *float64   `json:"total_value"`
+	AmountPaid  *float64   `json:"amount_paid"`
 }
 
 type AssignMemberInput struct {
@@ -63,6 +70,10 @@ func CreateProject(c *gin.Context) {
 		Status:      input.Status,
 		StartDate:   startDate,
 		CreatedBy:   uid,
+		ClientID:    input.ClientID,
+		TotalValue:  input.TotalValue,
+		AmountPaid:  input.AmountPaid,
+		Progress:    input.Progress,
 	}
 
 	if project.Status == "" {
@@ -244,6 +255,15 @@ func UpdateProject(c *gin.Context) {
 			updates["pending_progress"] = *input.Progress
 			// Don't update "progress" yet
 		}
+	}
+	if input.ClientID != nil {
+		updates["client_id"] = *input.ClientID
+	}
+	if input.TotalValue != nil {
+		updates["total_value"] = *input.TotalValue
+	}
+	if input.AmountPaid != nil {
+		updates["amount_paid"] = *input.AmountPaid
 	}
 
 	database.DB.Model(&project).Updates(updates)
@@ -578,4 +598,42 @@ func DeleteProject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Project deleted successfully"})
+}
+// SignProjectSOW signs the SOW for a project (client only)
+func SignProjectSOW(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	uid := userID.(uuid.UUID)
+
+	var project models.Project
+	if err := database.DB.First(&project, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	if project.ClientID == nil || *project.ClientID != uid {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only the assigned client can sign the SOW"})
+		return
+	}
+
+	now := time.Now()
+	updates := map[string]any{
+		"sow_signed_at": &now,
+		"sow_signed_by": &uid,
+	}
+
+	if err := database.DB.Model(&project).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign SOW"})
+		return
+	}
+
+	// Notify Admin
+	CreateNotification(project.CreatedBy, "success", "SOW Signed!", fmt.Sprintf("Client has signed the SOW for project: %s", project.Name))
+
+	c.JSON(http.StatusOK, gin.H{"message": "SOW signed successfully", "signed_at": now})
 }

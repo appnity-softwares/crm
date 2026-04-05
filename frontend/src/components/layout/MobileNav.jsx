@@ -30,12 +30,6 @@ export default function MobileNav() {
                             <span>Training</span>
                         </NavLink>
                     )}
-                    {isAlumni && (
-                        <NavLink to="/jobs" className={({ isActive }) => isActive ? 'active' : ''}>
-                            <FolderKanban size={20} />
-                            <span>Jobs</span>
-                        </NavLink>
-                    )}
                 </>
             ) : (
                 <>

@@ -92,6 +92,15 @@ func UpdateCourse(c *gin.Context) {
 	c.JSON(http.StatusOK, course)
 }
 
+func DeleteCourse(c *gin.Context) {
+	id, _ := uuid.Parse(c.Param("id"))
+	if err := database.DB.Delete(&models.Course{}, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete course"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Course deleted successfully"})
+}
+
 // ── Enrollment Handlers ──
 
 type EnrollInput struct {

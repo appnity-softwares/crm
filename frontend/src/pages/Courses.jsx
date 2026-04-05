@@ -3,7 +3,7 @@ import { trainingAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { Plus, Edit2, BookOpen, Clock, BadgeDollarSign } from 'lucide-react';
+import { Plus, Edit2, BookOpen, Clock, BadgeDollarSign, Trash2 } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 
 export default function Courses() {
@@ -64,6 +64,17 @@ export default function Courses() {
         setShowModal(true);
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this course? This will remove all syllabus data.')) return;
+        try {
+            await trainingAPI.deleteCourse(id);
+            toast('Course deleted successfully');
+            load();
+        } catch (err) {
+            toast('Failed to delete course', 'error');
+        }
+    };
+
     const columns = [
         { header: 'Title', accessor: 'title', render: r => <span style={{ fontWeight: 600 }}>{r.title}</span> },
         { header: 'Duration', accessor: 'duration', render: r => `${r.duration} Days` },
@@ -78,8 +89,11 @@ export default function Courses() {
             key: 'actions',
             render: (c) => (
                 <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(c)}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(c)} title="Edit">
                         <Edit2 size={12} />
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(c.id)} title="Delete">
+                        <Trash2 size={12} />
                     </button>
                 </div>
             )

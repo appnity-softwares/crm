@@ -21,6 +21,7 @@ import Profile from './pages/Profile';
 import DailyReports from './pages/DailyReports';
 import EmployeeDetail from './pages/EmployeeDetail';
 import RoleAccess from './pages/RoleAccess';
+import Settings from './pages/Settings';
 import Expenses from './pages/Expenses';
 import Leaves from './pages/Leaves';
 import Chat from './pages/Chat';
@@ -39,9 +40,9 @@ import Income from './pages/Income';
 import ChatPermissions from './pages/ChatPermissions';
 import FinanceAnalytics from './pages/FinanceAnalytics';
 import TraineeDashboard from './pages/TraineeDashboard';
+import StudentAttendance from './pages/StudentAttendance';
 import Courses from './pages/Courses';
 import Students from './pages/Students';
-import JobBoard from './pages/JobBoard';
 
 function ProtectedLayout() {
     const { user, loading } = useAuth();
@@ -109,7 +110,7 @@ export default function App() {
                                     <Route path="/worklogs" element={<WorkLogs />} />
                                     <Route path="/reports" element={<DailyReports />} />
                                     <Route path="/payroll" element={<Payroll />} />
-                                    <Route path="/income" element={<ElevatedRoute module="finance"><Income /></ElevatedRoute>} />
+                                    <Route path="/income" element={<ElevatedRoute module="income"><Income /></ElevatedRoute>} />
                                     <Route path="/finance-analytics" element={<ElevatedRoute module="finance"><FinanceAnalytics /></ElevatedRoute>} />
                                     <Route path="/expenses" element={<ElevatedRoute module="expenses"><Expenses /></ElevatedRoute>} />
                                     <Route path="/invoices" element={<ElevatedRoute module="invoices"><Invoices /></ElevatedRoute>} />
@@ -118,10 +119,11 @@ export default function App() {
                                     <Route path="/leaves" element={<Leaves />} />
                                     <Route path="/chat" element={<Chat />} />
                                     <Route path="/role-access" element={<ElevatedRoute module="role-access"><RoleAccess /></ElevatedRoute>} />
+                                    <Route path="/settings" element={<ElevatedRoute module="role-access"><Settings /></ElevatedRoute>} />
                                     
                                     <Route path="/training/courses" element={<ElevatedRoute module="employees"><Courses /></ElevatedRoute>} />
                                     <Route path="/training/students" element={<ElevatedRoute module="employees"><Students /></ElevatedRoute>} />
-                                    <Route path="/jobs" element={<JobBoard />} />
+                                    <Route path="/training/attendance" element={<StudentAttendance />} />
                                     <Route path="*" element={<NotFound />} />
                                 </Route>
                             </Routes>

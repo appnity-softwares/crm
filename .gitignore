@@ -9,3 +9,5 @@ tmp/
 *.out
 vendor/
 .DS_Store
+firebase-adminsdk.json
+server.log

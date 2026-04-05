@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 
 export default function EmployeeDetail() {
+    const { user, isAdmin, isManager } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const toast = useToast();
@@ -139,6 +140,40 @@ export default function EmployeeDetail() {
                             </div>
                         </div>
                     </div>
+
+                    {(isAdmin || isManager) && (
+                        <div className="card" style={{ border: '1px solid var(--red-100)', background: 'var(--red-50)' }}>
+                            <div className="card-header" style={{ borderBottomColor: 'var(--red-100)' }}>
+                                <h3 style={{ color: 'var(--red-700)' }}>Management</h3>
+                            </div>
+                            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {employee.is_active ? (
+                                    <button className="btn btn-warning w-full" onClick={async () => {
+                                        if(window.confirm('Deactivate this account?')) {
+                                            await employeeAPI.deactivate(employee.id);
+                                            toast('Employee deactivated');
+                                            window.location.reload();
+                                        }
+                                    }}>Deactivate Account</button>
+                                ) : (
+                                    <button className="btn btn-success w-full" onClick={async () => {
+                                        await employeeAPI.activate(employee.id);
+                                        toast('Employee activated');
+                                        window.location.reload();
+                                    }}>Activate Account</button>
+                                )}
+                                {isAdmin && (
+                                    <button className="btn btn-danger w-full" onClick={async () => {
+                                        if(window.confirm('PERMANENTLY DELETE THIS ACCOUNT? THIS CANNOT BE UNDONE.')) {
+                                            await employeeAPI.delete(employee.id);
+                                            toast('Employee deleted');
+                                            navigate('/employees');
+                                        }
+                                    }}>Delete Permanently</button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </aside>
 
                 {/* ─── Main Content Area ────────────────────────── */}

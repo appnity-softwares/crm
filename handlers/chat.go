@@ -73,7 +73,7 @@ func GetChatHistory(c *gin.Context) {
 	}
 
 	var messages []models.Message
-	database.DB.Where("(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)", mid, otherID, otherID, mid).
+	database.DB.Where("((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_sender) OR ((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_receiver)", mid, otherID, otherID, mid).
 		Order("created_at ASC").
 		Find(&messages)
 
@@ -127,19 +127,41 @@ func DeleteMessage(c *gin.Context) {
 	uid := userId.(uuid.UUID)
 	msgId := c.Param("id")
 
+	var req struct {
+		DeleteForEveryone bool `json:"delete_for_everyone"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// If no body provided, default to delete for me? No, let's keep it safe.
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Please specify if you want to delete for everyone or just for you"})
+		return
+	}
+
 	var msg models.Message
 	if err := database.DB.First(&msg, "id = ?", msgId).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
 		return
 	}
 
-	if msg.SenderID == nil || *msg.SenderID != uid {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized to delete this message"})
-		return
+	if req.DeleteForEveryone {
+		if msg.SenderID == nil || *msg.SenderID != uid {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized to delete this message for everyone"})
+			return
+		}
+		// Actually delete from DB (soft delete via GORM)
+		database.DB.Delete(&msg)
+		c.JSON(http.StatusOK, gin.H{"message": "Message deleted for everyone"})
+	} else {
+		// Delete for me
+		if msg.SenderID != nil && *msg.SenderID == uid {
+			database.DB.Model(&msg).Update("hidden_for_sender", true)
+		} else if msg.ReceiverID == uid {
+			database.DB.Model(&msg).Update("hidden_for_receiver", true)
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized to delete this message"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Message hidden for you"})
 	}
-
-	database.DB.Delete(&msg)
-	c.JSON(http.StatusOK, gin.H{"message": "Message deleted"})
 }
 
 func GetConversations(c *gin.Context) {
