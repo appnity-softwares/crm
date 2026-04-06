@@ -47,7 +47,7 @@ export default function ProjectDetail() {
                 taskAPI.getByProject(id),
                 hasElevated ? employeeAPI.getAll() : Promise.resolve({ data: { employees: [] } }),
                 isClient ? chatPermissionAPI.getAll() : Promise.resolve({ data: [] }),
-                (isAdmin || hasElevated) ? incomeAPI.getAll({ project_id: id }) : Promise.resolve({ data: [] }),
+                isAdmin ? incomeAPI.getAll({ project_id: id }) : Promise.resolve({ data: [] }),
                 projectAPI.getUpdates(id),
                 isAdmin ? configAPI.getAuditLogs({ module: 'project', target_id: id }) : Promise.resolve({ data: [] })
             ]);
@@ -181,7 +181,7 @@ export default function ProjectDetail() {
                     </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '20px 32px', background: 'var(--bg-app)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isAdmin ? 4 : 3}, 1fr)`, padding: '20px 32px', background: 'var(--bg-app)' }}>
                     <div style={{ borderRight: '1px solid var(--border)' }}>
                         <label style={heroLabelStyle}>Progress</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
@@ -195,10 +195,12 @@ export default function ProjectDetail() {
                         <label style={heroLabelStyle}>Start Date</label>
                         <div style={{ fontWeight: 600, marginTop: 4 }}>{new Date(project?.start_date).toLocaleDateString()}</div>
                     </div>
-                    <div style={{ borderRight: '1px solid var(--border)', paddingLeft: 32 }}>
-                        <label style={heroLabelStyle}>Project Value</label>
-                        <div style={{ fontWeight: 600, marginTop: 4, color: 'var(--primary-600)' }}>${project?.total_value?.toLocaleString() || '0'}</div>
-                    </div>
+                    {isAdmin && (
+                        <div style={{ borderRight: '1px solid var(--border)', paddingLeft: 32 }}>
+                            <label style={heroLabelStyle}>Project Value</label>
+                            <div style={{ fontWeight: 600, marginTop: 4, color: 'var(--primary-600)' }}>₹{project?.total_value?.toLocaleString() || '0'}</div>
+                        </div>
+                    )}
                     <div style={{ paddingLeft: 32 }}>
                         <label style={heroLabelStyle}>Active Team</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: -8, marginTop: 4 }}>
@@ -454,8 +456,12 @@ export default function ProjectDetail() {
                                 <label>Progress ({editForm.progress}%)</label>
                                 <input type="range" min="0" max="100" value={editForm.progress} onChange={e => setEditForm({ ...editForm, progress: parseInt(e.target.value) })} style={{ width: '100%' }} />
                             </div>
-                            <div className="form-group"><label>Total Value ($)</label><input type="number" value={editForm.total_value} onChange={e => setEditForm({ ...editForm, total_value: parseFloat(e.target.value) || 0 })} /></div>
-                            <div className="form-group"><label>Amount Paid ($)</label><input type="number" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} /></div>
+                            {isAdmin && (
+                                <>
+                                    <div className="form-group"><label>Total Value (₹)</label><input type="number" value={editForm.total_value} onChange={e => setEditForm({ ...editForm, total_value: parseFloat(e.target.value) || 0 })} /></div>
+                                    <div className="form-group"><label>Amount Paid (₹)</label><input type="number" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} /></div>
+                                </>
+                            )}
                         </div>
                         <div className="form-group" style={{ marginTop: 12 }}><label>Statement of Work (SOW)</label><textarea rows={5} value={editForm.sow} onChange={e => setEditForm({ ...editForm, sow: e.target.value })} placeholder="Detailed scope of project..." /></div>
                         <div className="form-actions" style={{ marginTop: 24 }}>

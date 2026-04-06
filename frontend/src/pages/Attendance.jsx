@@ -180,11 +180,14 @@ export default function Attendance() {
                     <p>{hasElevated ? 'Manage team attendance and shifts' : 'Your daily clock-in records'}</p>
                 </div>
                 <div className="header-actions">
-                    {hasElevated ? (
+                    {user?.role === 'admin' && (
+                        <button className="btn btn-primary" onClick={() => setShowQRGen(true)}>
+                            <QrCode size={15} /> Live QR Code
+                        </button>
+                    )}
+                    
+                    {hasElevated && (
                         <>
-                            <button className="btn btn-primary" onClick={() => setShowQRGen(true)}>
-                                <QrCode size={15} /> Live QR Code
-                            </button>
                             <button className="btn btn-secondary" onClick={() => { setEditing(null); setForm({ user_id: '', date: '', status: 'present', check_in: '', check_out: '', remark: '', is_late: false }); setShowModal(true); }}>
                                 <Plus size={15} /> Manual Entry
                             </button>
@@ -192,7 +195,9 @@ export default function Attendance() {
                                 <Download size={15} /> Export CSV
                             </button>
                         </>
-                    ) : (
+                    )}
+
+                    {(user?.role === 'manager' || !hasElevated) && (
                         <div style={{ display: 'flex', gap: 10 }}>
                             {records.some(r => r.user_id === user.id && !r.check_out) && (
                                 <button className="btn btn-warning" onClick={async () => {

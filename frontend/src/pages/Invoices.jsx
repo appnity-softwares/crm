@@ -208,29 +208,31 @@ export default function Invoices() {
             </div>
 
             <div className="page-content">
-                <div className="stats-grid" style={{ marginBottom: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                    <div className="card stat-card shadow-sm" style={{ background: 'var(--primary-50)' }}>
-                        <div className="stat-icon primary"><Wallet size={20} /></div>
-                        <div className="stat-content">
-                            <span className="stat-label">Available Balance</span>
-                            <div className="stat-value" style={{ color: 'var(--primary-600)' }}>₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}</div>
+                {isAdmin && (
+                    <div className="stats-grid" style={{ marginBottom: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        <div className="card stat-card shadow-sm" style={{ background: 'var(--primary-50)' }}>
+                            <div className="stat-icon primary"><Wallet size={20} /></div>
+                            <div className="stat-content">
+                                <span className="stat-label">Available Balance</span>
+                                <div className="stat-value" style={{ color: 'var(--primary-600)' }}>₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}</div>
+                            </div>
+                        </div>
+                        <div className="card stat-card shadow-sm">
+                            <div className="stat-icon green"><CheckCircle size={20} /></div>
+                            <div className="stat-content">
+                                <span className="stat-label">Total Received</span>
+                                <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                            </div>
+                        </div>
+                        <div className="card stat-card shadow-sm">
+                            <div className="stat-icon amber"><Clock size={20} /></div>
+                            <div className="stat-content">
+                                <span className="stat-label">Pending Collection</span>
+                                <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                            </div>
                         </div>
                     </div>
-                    <div className="card stat-card shadow-sm">
-                        <div className="stat-icon green"><CheckCircle size={20} /></div>
-                        <div className="stat-content">
-                            <span className="stat-label">Total Received</span>
-                            <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
-                        </div>
-                    </div>
-                    <div className="card stat-card shadow-sm">
-                        <div className="stat-icon amber"><Clock size={20} /></div>
-                        <div className="stat-content">
-                            <span className="stat-label">Pending Collection</span>
-                            <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 <div className="card">
                     {loading ? <div className="spinner" /> : (

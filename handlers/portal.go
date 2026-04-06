@@ -34,7 +34,7 @@ func GetPortalData(c *gin.Context) {
 
 	// Check if token belongs to a project
 	var project models.Project
-	err = database.DB.First(&project, "client_portal_token = ?", token).Error
+	err = database.DB.First(&project, "portal_token = ?", token).Error
 	if err == nil {
 		// Found project, fetch its invoices, updates and comments
 		var invoices []models.Invoice
@@ -78,7 +78,7 @@ func PortalPostComment(c *gin.Context) {
 		clientID = *invoice.ClientID
 	} else {
 		var project models.Project
-		if err := database.DB.Select("id", "client_id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		if err := database.DB.Select("id", "client_id").First(&project, "portal_token = ?", token).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
 			return
 		}
@@ -136,7 +136,7 @@ func PortalCreateTicket(c *gin.Context) {
 		projectID = *invoice.ProjectID
 	} else {
 		var project models.Project
-		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		if err := database.DB.Select("id").First(&project, "portal_token = ?", token).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
 			return
 		}
@@ -277,7 +277,7 @@ func PortalAcceptSOW(c *gin.Context) {
 		projectID = *invoice.ProjectID
 	} else {
 		var project models.Project
-		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		if err := database.DB.Select("id").First(&project, "portal_token = ?", token).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
 			return
 		}

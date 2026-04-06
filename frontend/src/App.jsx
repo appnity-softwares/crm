@@ -52,9 +52,8 @@ function ProtectedLayout() {
     if (!user) return <Navigate to="/login" replace />;
 
     const navStyle = user.nav_style || 'both';
-    const isExternalUser = user.role === 'prospect' || user.role === 'client' || user.role === 'trainee' || user.role === 'alumni';
-    const showSidebar = !isExternalUser && (navStyle === 'sidebar' || navStyle === 'both');
-    const showFloating = !isExternalUser && (navStyle === 'floating' || navStyle === 'both');
+    const showSidebar = (navStyle === 'sidebar' || navStyle === 'both');
+    const showFloating = (navStyle === 'floating' || navStyle === 'both');
 
     return (
         <div className="app-layout">

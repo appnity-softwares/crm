@@ -117,9 +117,9 @@ export default function CourseDetail() {
 
                     <section className="detail-section">
                         <h2>Curriculum / Syllabus</h2>
-                        <div className="syllabus-container card">
+                        <div className="syllabus-container">
                             {course.syllabus ? (
-                                <div className="markdown-content">
+                                <div className="markdown-content prose">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                         {course.syllabus}
                                     </ReactMarkdown>
@@ -170,6 +170,7 @@ export default function CourseDetail() {
                     padding: 24px;
                     max-width: 1200px;
                     margin: 0 auto;
+                    color: var(--text-primary);
                 }
                 .detail-header-nav {
                     display: flex;
@@ -194,32 +195,19 @@ export default function CourseDetail() {
                 }
                 .course-hero {
                     background: var(--bg-card);
-                    border-radius: var(--radius-xl);
+                    border-radius: 24px;
                     padding: 48px;
                     display: flex;
                     justify-content: space-between;
-                    gap: 48px;
+                    gap: 40px;
                     margin-bottom: 48px;
                     box-shadow: var(--shadow-lg);
                     border: 1px solid var(--border);
                     position: relative;
-                    overflow: hidden;
-                }
-                .course-hero::before {
-                    content: '';
-                    position: absolute;
-                    top: -100px;
-                    right: -100px;
-                    width: 300px;
-                    height: 300px;
-                    background: radial-gradient(circle, var(--primary-100) 0%, transparent 70%);
-                    z-index: 0;
-                    opacity: 0.3;
+                    z-index: 1;
                 }
                 .hero-content {
                     flex: 1;
-                    position: relative;
-                    z-index: 1;
                 }
                 .course-badge {
                     display: inline-block;
@@ -234,31 +222,27 @@ export default function CourseDetail() {
                     letter-spacing: 0.5px;
                 }
                 .course-hero h1 {
-                    font-size: 2.8rem;
+                    font-size: 3rem;
                     font-weight: 800;
                     margin-bottom: 20px;
-                    color: var(--text-primary);
                     line-height: 1.1;
+                    letter-spacing: -1px;
                 }
                 .hero-description {
                     font-size: 1.15rem;
                     color: var(--text-secondary);
-                    line-height: 1.7;
+                    line-height: 1.6;
                     margin-bottom: 40px;
-                    max-width: 650px;
+                    max-width: 700px;
                 }
                 .hero-stats {
                     display: flex;
                     gap: 40px;
-                    flex-wrap: wrap;
                 }
                 .hero-stat {
                     display: flex;
                     align-items: center;
-                    gap: 14px;
-                }
-                .hero-stat svg {
-                    opacity: 0.8;
+                    gap: 12px;
                 }
                 .hero-stat label {
                     display: block;
@@ -267,49 +251,27 @@ export default function CourseDetail() {
                     text-transform: uppercase;
                     letter-spacing: 1px;
                     font-weight: 700;
-                    margin-bottom: 2px;
                 }
                 .hero-stat span {
                     font-weight: 700;
-                    font-size: 1.05rem;
-                    color: var(--text-primary);
+                    font-size: 1.1rem;
                 }
                 .course-cta-card {
-                    width: 340px;
-                    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
-                    border-radius: var(--radius-lg);
+                    width: 320px;
+                    background: var(--primary-600);
+                    border-radius: 20px;
                     padding: 32px;
                     color: #fff;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 24px;
-                    z-index: 1;
-                    box-shadow: 0 20px 40px rgba(37, 99, 235, 0.2);
-                }
-                .cta-header h3 {
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    margin-bottom: 6px;
-                }
-                .cta-header p {
-                    opacity: 0.85;
-                    font-size: 0.9rem;
-                    line-height: 1.4;
+                    box-shadow: 0 20px 40px rgba(37, 99, 235, 0.25);
                 }
                 .cta-price {
+                    margin: 24px 0;
                     padding: 24px 0;
-                    border-top: 1px solid rgba(255,255,255,0.15);
-                    border-bottom: 1px solid rgba(255,255,255,0.15);
-                }
-                .price-label {
-                    display: block;
-                    font-size: 0.85rem;
-                    opacity: 0.75;
-                    margin-bottom: 6px;
-                    font-weight: 500;
+                    border-top: 1px solid rgba(255,255,255,0.2);
+                    border-bottom: 1px solid rgba(255,255,255,0.2);
                 }
                 .price-value {
-                    font-size: 2.2rem;
+                    font-size: 2.5rem;
                     font-weight: 800;
                 }
                 .cta-features {
@@ -317,40 +279,24 @@ export default function CourseDetail() {
                     padding: 0;
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
+                    gap: 12px;
                 }
                 .cta-features li {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    font-size: 0.95rem;
+                    gap: 8px;
+                    font-size: 0.9rem;
                     font-weight: 500;
                 }
                 .detail-grid {
                     display: grid;
-                    grid-template-columns: 1fr 320px;
+                    grid-template-columns: 1fr 300px;
                     gap: 48px;
                 }
-                .detail-section {
-                    margin-bottom: 56px;
-                }
                 .detail-section h2 {
-                    font-size: 1.6rem;
-                    font-weight: 700;
+                    font-size: 1.5rem;
                     margin-bottom: 24px;
-                    position: relative;
-                    padding-bottom: 16px;
-                    color: var(--text-primary);
-                }
-                .detail-section h2::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    width: 50px;
-                    height: 5px;
-                    background: var(--primary-500);
-                    border-radius: 10px;
+                    font-weight: 700;
                 }
                 .overview-content {
                     font-size: 1.1rem;
@@ -359,102 +305,62 @@ export default function CourseDetail() {
                     white-space: pre-wrap;
                     background: var(--bg-card);
                     padding: 32px;
-                    border-radius: var(--radius-lg);
+                    border-radius: 16px;
                     border: 1px solid var(--border);
                 }
                 .syllabus-container {
-                    padding: 40px;
                     background: var(--bg-card);
                     border: 1px solid var(--border);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
+                    border-radius: 16px;
+                    padding: 40px;
                 }
-                .markdown-content {
+                .markdown-content.prose {
+                    max-width: none;
                     color: var(--text-primary);
-                    line-height: 1.8;
                 }
-                .markdown-content h1 { font-size: 1.8rem; margin: 32px 0 16px; font-weight: 700; color: var(--primary-600); }
-                .markdown-content h2 { font-size: 1.5rem; margin: 28px 0 14px; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-                .markdown-content h3 { font-size: 1.2rem; margin: 24px 0 12px; font-weight: 700; }
-                .markdown-content ul, .markdown-content ol { padding-left: 24px; margin-bottom: 20px; }
-                .markdown-content li { margin-bottom: 10px; }
-                .markdown-content li::marker { color: var(--primary-500); font-weight: bold; }
-                .markdown-content p { margin-bottom: 16px; }
+                .markdown-content.prose h1 { font-size: 2rem; margin: 40px 0 20px; color: var(--primary-600); border-bottom: 2px solid var(--primary-100); padding-bottom: 12px; }
+                .markdown-content.prose h2 { font-size: 1.5rem; margin: 32px 0 16px; color: var(--text-primary); }
+                .markdown-content.prose h3 { font-size: 1.25rem; margin: 24px 0 12px; }
+                .markdown-content.prose p { margin-bottom: 20px; line-height: 1.8; color: var(--text-secondary); }
+                .markdown-content.prose ul { padding-left: 20px; margin-bottom: 20px; list-style-type: disc; }
+                .markdown-content.prose ul li { margin-bottom: 8px; color: var(--text-secondary); }
+                .markdown-content.prose table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+                .markdown-content.prose th, .markdown-content.prose td { padding: 12px; border: 1px solid var(--border); text-align: left; }
+                .markdown-content.prose th { background: var(--bg-hover); font-weight: 700; }
+                
                 .sidebar-card {
                     background: var(--bg-card);
-                    border-radius: var(--radius-lg);
-                    padding: 32px;
                     border: 1px solid var(--border);
-                    margin-bottom: 32px;
-                    box-shadow: var(--shadow-sm);
-                }
-                .sidebar-card h3 {
-                    font-size: 1.2rem;
-                    font-weight: 700;
+                    border-radius: 16px;
+                    padding: 24px;
                     margin-bottom: 24px;
-                    color: var(--text-primary);
-                }
-                .highlights-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 24px;
                 }
                 .highlight-item {
                     display: flex;
-                    gap: 16px;
-                }
-                .highlight-item svg {
-                    color: var(--primary-500);
-                    flex-shrink: 0;
+                    gap: 12px;
+                    margin-bottom: 20px;
                 }
                 .highlight-item label {
                     display: block;
                     font-size: 0.75rem;
                     color: var(--text-muted);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
                     font-weight: 600;
-                    margin-bottom: 2px;
                 }
                 .highlight-item span {
                     font-weight: 700;
-                    font-size: 1rem;
                     color: var(--text-primary);
                 }
                 .sidebar-contact {
-                    text-align: center;
-                    padding: 32px;
                     background: var(--primary-50);
-                    border-radius: var(--radius-lg);
-                    border: 1px dashed var(--primary-200);
+                    padding: 24px;
+                    border-radius: 16px;
+                    text-align: center;
                 }
-                .sidebar-contact h4 {
-                    font-weight: 700;
-                    margin-bottom: 10px;
-                    color: var(--primary-700);
-                    font-size: 1.1rem;
-                }
-                .sidebar-contact p {
-                    color: var(--primary-600);
-                    font-size: 0.9rem;
-                    margin-bottom: 20px;
-                }
-
-                @media (max-width: 1024px) {
-                    .course-hero {
-                        flex-direction: column;
-                        padding: 32px;
-                        gap: 32px;
-                    }
-                    .course-cta-card {
-                        width: 100%;
-                    }
-                    .detail-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    .course-hero h1 {
-                        font-size: 2.2rem;
-                    }
+                @media (max-width: 900px) {
+                    .course-hero { flex-direction: column; padding: 32px; }
+                    .course-cta-card { width: 100%; }
+                    .detail-grid { grid-template-columns: 1fr; }
+                    .hero-stats { flex-wrap: wrap; }
                 }
             `}} />
         </div>

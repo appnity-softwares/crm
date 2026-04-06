@@ -109,17 +109,15 @@ export default function Dashboard() {
             </div>
 
             <div className="stats-grid">
-                {hasElevated && (
+                {user?.role === 'admin' && (
                     <div className="stat-card" style={{ border: '2px solid var(--primary-100)', background: 'var(--primary-50)' }}>
                         <div className="stat-icon primary"><Wallet size={20} /></div>
                         <div className="stat-info">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h4>Total Balance</h4>
-                                {user?.role === 'admin' && (
-                                    <button onClick={() => setShowBalanceModal(true)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
-                                        <Plus size={16} />
-                                    </button>
-                                )}
+                                <button onClick={() => setShowBalanceModal(true)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
+                                    <Plus size={16} />
+                                </button>
                             </div>
                             <div className="stat-value" style={{ color: 'var(--primary-700)' }}>
                                 ₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}

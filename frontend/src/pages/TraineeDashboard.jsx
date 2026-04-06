@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { trainingAPI, attendanceAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { BookOpen, Calendar, CheckCircle, Clock, Award, FileText, Send, User, MessageSquare, Briefcase } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, Award, FileText, MessageSquare, IndianRupee, ChevronRight, Activity, Globe } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function TraineeDashboard() {
     const { user } = useAuth();
@@ -18,7 +19,7 @@ export default function TraineeDashboard() {
         try {
             const [enRes, attRes] = await Promise.all([
                 trainingAPI.getMyEnrollments(),
-                attendanceAPI.getMine({ limit: 5 })
+                attendanceAPI.getMine({ limit: 8 })
             ]);
             setEnrollments(enRes.data || []);
             setAttendance(attRes.data.attendance || []);
@@ -36,134 +37,231 @@ export default function TraineeDashboard() {
 
     if (enrollments.length === 0) {
         return (
-            <div className="page-content" style={{ textAlign: 'center', padding: '100px 20px' }}>
-                <BookOpen size={64} style={{ color: 'var(--text-muted)', marginBottom: 20 }} />
-                <h2>No active enrollments found</h2>
-                <p style={{ color: 'var(--text-muted)' }}>You are not enrolled in any training programs yet. Please contact the administrator.</p>
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
+                <div style={{ padding: 40, background: 'var(--bg-card)', borderRadius: 24, border: '1px solid var(--border)', maxWidth: 500, boxShadow: 'var(--shadow-xl)' }}>
+                    <div style={{ width: 80, height: 80, background: 'var(--primary-100)', color: 'var(--primary-600)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                        <BookOpen size={40} />
+                    </div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 12 }}>No Active Training</h2>
+                    <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32 }}>You haven't been enrolled in any training curricula yet. Enrollments provide access to syllabi, certificates, and attendance tracking.</p>
+                    <Link to="/chat" className="btn btn-primary" style={{ padding: '12px 32px' }}>Contact Support</Link>
+                </div>
             </div>
         );
     }
 
+    const syllabus = activeEnrollment.course?.syllabus || '';
+    const totalFee = activeEnrollment.total_fee || activeEnrollment.course?.total_fee || 0;
+    const paidAmount = activeEnrollment.paid_amount || 0;
+    const payProgress = Math.min(100, (paidAmount / (totalFee || 1)) * 100);
+
     return (
-        <div className="page-content">
-            <div className="header" style={{ marginBottom: 30 }}>
-                <div className="header-left">
-                    <h1>My Training Portal</h1>
-                    <p>Track your learning progress, attendance, and certificates</p>
-                </div>
-                <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-                    <Link to="/chat" className="btn btn-secondary" style={{ gap: 8 }}>
-                        <MessageSquare size={16} /> Open Company Chat
-                    </Link>
-                    {activeEnrollment && (
-                        <div className="badge purple" style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
-                            Enrolled in: {activeEnrollment.course?.title}
-                        </div>
-                    )}
+        <div className="page-content" style={{ paddingBottom: 60 }}>
+            <div className="trainee-header card" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent', boxShadow: 'none', marginBottom: 32 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20 }}>
+                    <div>
+                        <h1 style={{ fontSize: '2.4rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: 8 }}>Mitaan Training <span className="text-primary">Portal</span></h1>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Welcome back, {user?.name.split(' ')[0]}! Track your professional growth and curriculum milestones.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <Link to="/chat" className="btn" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', padding: '12px 20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <MessageSquare size={18} /> Company Chat
+                        </Link>
+                        <button className="btn btn-primary" style={{ padding: '12px 24px', fontWeight: 700 }}>
+                            <Award size={18} style={{ marginRight: 8 }} /> Certification
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div className="card" style={{ padding: 24 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h3 style={{ margin: 0 }}>Course Syllabus</h3>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                <Calendar size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
-                                Started: {new Date(activeEnrollment.start_date).toLocaleDateString()}
-                            </div>
-                        </div>
-                        <div className="syllabus-content" style={{ background: 'var(--bg-app)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', maxHeight: 500, overflowY: 'auto' }}>
-                            <ReactMarkdown>{activeEnrollment.course?.syllabus || 'No syllabus provided.'}</ReactMarkdown>
-                        </div>
-                    </div>
+            <div className="trainee-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }}>
+                <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, white, #f8fafc)', borderLeft: '4px solid var(--primary-500)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Active Curriculum</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeEnrollment.course?.title}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--primary-600)', fontWeight: 600, marginTop: 4 }}>Current Enrollment</div>
+                </div>
+                <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, white, #f8fafc)', borderLeft: '4px solid var(--amber-500)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Training Progress</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{Math.floor((new Date() - new Date(activeEnrollment.start_date)) / (1000 * 60 * 60 * 24))} Days</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--amber-600)', fontWeight: 600, marginTop: 4 }}>Elapsed Time</div>
+                </div>
+                <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, white, #f8fafc)', borderLeft: '4px solid var(--green-500)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Attendance Rate</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{(attendance.filter(a => a.status === 'present').length / (attendance.length || 1) * 100).toFixed(0)}%</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--green-600)', fontWeight: 600, marginTop: 4 }}>Based on recent</div>
+                </div>
+                <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, white, #f8fafc)', borderLeft: '4px solid var(--red-500)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Pending Balance</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>₹{(totalFee - paidAmount).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--red-600)', fontWeight: 600, marginTop: 4 }}>Due Record</div>
+                </div>
+            </div>
 
-                    <div className="card" style={{ padding: 24 }}>
-                        <h3 style={{ marginBottom: 20 }}>Current Progress</h3>
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Last Completed Topic</label>
-                            <div style={{ marginTop: 8, padding: 12, background: 'var(--primary-50)', color: 'var(--primary-700)', borderRadius: 8, border: '1px solid var(--primary-100)', fontWeight: 500 }}>
-                                {activeEnrollment.completed_topic || 'Not started yet'}
-                            </div>
-                        </div>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                            <div className="card shadow-sm" style={{ padding: 15, textAlign: 'center' }}>
-                                <Clock size={24} style={{ margin: '0 auto 10px', color: 'var(--amber-500)' }} />
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Days Elapsed</div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-                                    {Math.floor((new Date() - new Date(activeEnrollment.start_date)) / (1000 * 60 * 60 * 24))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-600)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <BookOpen size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Syllabus & Curriculum</h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mitaan Official Training Program</p>
                                 </div>
                             </div>
-                            <div className="card shadow-sm" style={{ padding: 15, textAlign: 'center' }}>
-                                <BookOpen size={24} style={{ margin: '0 auto 10px', color: 'var(--blue-500)' }} />
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Course Duration</div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{activeEnrollment.course?.duration || 0} Days</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Current Topic</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-600)' }}>{activeEnrollment.completed_topic || 'Introduction'}</div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '32px' }}>
+                            <div className="prose-syllabus-modern">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{syllabus}</ReactMarkdown>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
                     <div className="card" style={{ padding: 24 }}>
-                        <h3 style={{ marginBottom: 20 }}>Fee Summary</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Total Course Fee</span>
-                            <span style={{ fontWeight: 600 }}>${activeEnrollment.total_fee || activeEnrollment.course?.total_fee}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <Activity size={18} className="text-primary" />
+                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Fee & Financials</h3>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Total Paid</span>
-                            <span style={{ fontWeight: 600, color: 'var(--green-600)' }}>${activeEnrollment.paid_amount}</span>
+                        <div style={{ marginBottom: 24 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Payment Progress</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>{payProgress.toFixed(0)}%</span>
+                            </div>
+                            <div style={{ height: 10, background: 'var(--bg-hover)', borderRadius: 10, overflow: 'hidden' }}>
+                                <div style={{ width: `${payProgress}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary-500), var(--primary-600))' }} />
+                            </div>
                         </div>
-                        <div style={{ height: 8, background: 'var(--bg-hover)', borderRadius: 4, margin: '15px 0' }}>
-                            <div style={{ 
-                                width: `${Math.min(100, (activeEnrollment.paid_amount / (activeEnrollment.total_fee || 1)) * 100)}%`, 
-                                height: '100%', 
-                                background: 'var(--primary-500)', 
-                                borderRadius: 4 
-                            }} />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Remaining</span>
-                            <span style={{ fontWeight: 700 }}>${(activeEnrollment.total_fee || activeEnrollment.course?.total_fee) - activeEnrollment.paid_amount}</span>
-                        </div>
-                    </div>
-
-                    <div className="card" style={{ padding: 24 }}>
-                        <h3 style={{ marginBottom: 20 }}>Resources & Docs</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {activeEnrollment.cert_link ? (
-                                <a href={activeEnrollment.cert_link} target="_blank" className="btn btn-secondary w-full" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                                    <Award size={16} /> Course Certificate
-                                </a>
-                            ) : (
-                                <div className="btn btn-disabled w-full" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                                    <Award size={16} /> Certificate (Available on update)
-                                </div>
-                            )}
-                            {activeEnrollment.offer_link && (
-                                <a href={activeEnrollment.offer_link} target="_blank" className="btn btn-secondary w-full" style={{ justifyContent: 'flex-start', gap: 10 }}>
-                                    <FileText size={16} /> Training Offer Letter
-                                </a>
-                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 12, background: 'var(--bg-hover)' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total Fee</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>₹{totalFee.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 12, background: 'var(--bg-hover)' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Paid to Date</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--green-600)' }}>₹{paidAmount.toLocaleString()}</span>
+                            </div>
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 8px' }}>
+                                <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Remaining Due</span>
+                                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--red-500)' }}>₹{(totalFee - paidAmount).toLocaleString()}</span>
+                            </div>
                         </div>
                     </div>
 
                     <div className="card" style={{ padding: 24 }}>
-                        <h3 style={{ marginBottom: 15 }}>Recent Attendance</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {attendance.map(a => (
-                                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                    <div style={{ fontSize: '0.9rem' }}>{new Date(a.date).toLocaleDateString()}</div>
-                                    <div className={`badge ${a.status === 'present' ? 'green' : 'red'}`} style={{ fontSize: '0.7rem' }}>{a.status}</div>
-                                </div>
-                            ))}
-                            {attendance.length === 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No records found.</p>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <Globe size={18} className="text-primary" />
+                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Resources & Links</h3>
                         </div>
-                        <button className="btn btn-text w-full" style={{ marginTop: 15, fontSize: '0.85rem' }}>View All Attendance</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <a href="#" className="resource-link">
+                                <div className="resource-icon green"><FileText size={16} /></div>
+                                <div className="resource-info">
+                                    <div className="resource-name">Curriculum E-Book</div>
+                                    <div className="resource-meta">PDF &bull; 4.2 MB</div>
+                                </div>
+                                <ChevronRight size={16} className="text-muted" />
+                            </a>
+                            <a href="#" className="resource-link">
+                                <div className="resource-icon blue"><Globe size={16} /></div>
+                                <div className="resource-info">
+                                    <div className="resource-name">Staging Sandbox</div>
+                                    <div className="resource-meta">Dev Environment</div>
+                                </div>
+                                <ChevronRight size={16} className="text-muted" />
+                            </a>
+                        </div>
+                    </div>
+
+                    <div className="card" style={{ padding: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <Clock size={16} className="text-primary" />
+                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Attendance Trend</h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {attendance.length > 0 ? attendance.map(a => (
+                                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{new Date(a.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</div>
+                                    <div className={`badge ${a.status === 'present' ? 'green' : 'amber'}`} style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800 }}>{a.status}</div>
+                                </div>
+                            )) : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No records found.</p>}
+                        </div>
+                        <Link to="/attendance" className="btn btn-text w-full" style={{ marginTop: 16, fontSize: '0.85rem', color: 'var(--primary-600)' }}>Full Attendance Report</Link>
                     </div>
                 </div>
             </div>
+            
+            <style>{`
+                .prose-syllabus-modern {
+                    line-height: 1.7;
+                    color: var(--text-secondary);
+                    font-size: 1rem;
+                }
+                .prose-syllabus-modern h1, .prose-syllabus-modern h2, .prose-syllabus-modern h3 {
+                    color: var(--text-primary);
+                    font-weight: 800;
+                    margin-top: 2rem;
+                    margin-bottom: 1rem;
+                    letter-spacing: -0.02em;
+                }
+                .prose-syllabus-modern h1 { font-size: 1.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+                .prose-syllabus-modern h2 { font-size: 1.4rem; }
+                .prose-syllabus-modern h3 { font-size: 1.2rem; }
+                .prose-syllabus-modern ul, .prose-syllabus-modern ol {
+                    margin-bottom: 1.5rem;
+                    padding-left: 1.25rem;
+                }
+                .prose-syllabus-modern li {
+                    margin-bottom: 0.5rem;
+                }
+                .prose-syllabus-modern p {
+                    margin-bottom: 1.25rem;
+                }
+                .resource-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px;
+                    border-radius: 12px;
+                    border: 1px solid var(--border);
+                    transition: all 0.2s;
+                }
+                .resource-link:hover {
+                    background: var(--bg-hover);
+                    border-color: var(--primary-300);
+                    transform: translateX(4px);
+                }
+                .resource-icon {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                }
+                .resource-icon.green { background: var(--green-50); color: var(--green-600); }
+                .resource-icon.blue { background: var(--primary-50); color: var(--primary-600); }
+                .resource-info {
+                    flex: 1;
+                }
+                .resource-name {
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: var(--text-primary);
+                }
+                .resource-meta {
+                    font-size: 0.7rem;
+                    color: var(--text-muted);
+                }
+            `}</style>
         </div>
     );
 }
