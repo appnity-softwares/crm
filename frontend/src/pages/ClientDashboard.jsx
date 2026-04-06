@@ -65,13 +65,24 @@ export default function ClientDashboard() {
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <Link
-                                        to={`/portal/${p.client_portal_token}`}
-                                        className="btn btn-primary"
-                                        style={{ padding: '12px 24px', fontSize: '1.1rem', gap: 8 }}
-                                    >
-                                        Access Project Portal <ExternalLink size={18} />
-                                    </Link>
+                                     {p.client_portal_token ? (
+                                        <Link
+                                            to={`/portal/${p.client_portal_token}`}
+                                            className="btn btn-primary"
+                                            style={{ padding: '12px 24px', fontSize: '1.1rem', gap: 8 }}
+                                        >
+                                            Access Project Portal <ExternalLink size={18} />
+                                        </Link>
+                                    ) : (
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            disabled 
+                                            style={{ padding: '12px 24px', fontSize: '1.1rem', opacity: 0.5, cursor: 'not-allowed', gap: 8 }}
+                                            title="Your portal link is being generated. Please check back soon."
+                                        >
+                                            Portal Initializing <ExternalLink size={18} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

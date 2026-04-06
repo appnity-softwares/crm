@@ -12,7 +12,7 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 import { Navigate } from 'react-router-dom';
 
 export default function Dashboard() {
-    const { user, hasElevated } = useAuth();
+    const { user, hasElevated, isAdmin } = useAuth();
     const { dark } = useTheme();
 
     if (user?.role === 'prospect') return <Navigate to="/prospect-dashboard" replace />;
