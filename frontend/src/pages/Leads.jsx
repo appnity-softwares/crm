@@ -322,7 +322,7 @@ export default function Leads() {
 
                         <div className="form-grid" style={{ marginTop: 15 }}>
                             <div className="form-group">
-                                <label>Total Contract Value ($)</label>
+                                <label>Total Contract Value (₹)</label>
                                 <input 
                                     type="number" 
                                     required 
@@ -332,7 +332,7 @@ export default function Leads() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Advance Paid ($)</label>
+                                <label>Advance Paid (₹)</label>
                                 <input 
                                     type="number" 
                                     value={convertForm.advance_payment} 
