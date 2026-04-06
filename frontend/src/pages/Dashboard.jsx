@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { dashboardAPI, balanceAPI, noticeAPI } from '../services/api';
-import { Clock, FolderKanban, DollarSign, Activity, TrendingUp, Target, Users, Briefcase, FileText, UserPlus, Wallet, Plus, IndianRupee, Bell, Megaphone, Trash2 } from 'lucide-react';
+import { Clock, FolderKanban, DollarSign, Activity, TrendingUp, Target, Users, Briefcase, FileText, UserPlus, Wallet, Plus, IndianRupee, Bell, Megaphone, Trash2, Eye, EyeOff } from 'lucide-react';
 import { CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Legend, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
 import { useApi } from '../hooks/useApi';
@@ -29,6 +29,7 @@ export default function Dashboard() {
     const [showNoticeModal, setShowNoticeModal] = useState(false);
     const [noticeForm, setNoticeForm] = useState({ title: '', content: '', type: 'general' });
     const [savingNotice, setSavingNotice] = useState(false);
+    const [showAmount, setShowAmount] = useState(false);
 
     const handleUpdateBalance = async (e) => {
         e.preventDefault();
@@ -115,12 +116,17 @@ export default function Dashboard() {
                         <div className="stat-info">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h4>Total Balance</h4>
-                                <button onClick={() => setShowBalanceModal(true)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
-                                    <Plus size={16} />
-                                </button>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <button onClick={() => setShowAmount(!showAmount)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
+                                        {showAmount ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                    <button onClick={() => setShowBalanceModal(true)} style={{ background: 'none', border: 'none', color: 'var(--primary-600)', cursor: 'pointer', padding: 4 }}>
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
                             </div>
                             <div className="stat-value" style={{ color: 'var(--primary-700)' }}>
-                                ₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}
+                                {showAmount ? `₹${balanceData?.total_balance?.toLocaleString('en-IN') || '0'}` : '₹ ••••••••'}
                             </div>
                             <div className="stat-sub">Available Funds</div>
                         </div>
@@ -176,33 +182,35 @@ export default function Dashboard() {
                 )}
             </div>
 
-            <div className="dashboard-grid-2-1" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 24, marginBottom: 30 }}>
-                <div className="card revenue-card" style={{ marginBottom: 0 }}>
-                    <div className="card-header">
-                        <h3><DollarSign size={16} /> Revenue Growth Trend</h3>
-                    </div>
-                    <div className="card-body">
-                        <div style={{ width: '100%', height: 320, minHeight: 320, minWidth: 200 }}>
-                            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={320}>
-                                <AreaChart data={revenueData}>
-                                    <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => '₹' + v} />
-                                    <Tooltip
-                                        contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
-                                    />
-                                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
+            <div className="dashboard-grid-2-1" style={{ display: 'grid', gridTemplateColumns: isAdmin ? 'minmax(0, 1fr) 350px' : '1fr', gap: 24, marginBottom: 30 }}>
+                {isAdmin && (
+                    <div className="card revenue-card" style={{ marginBottom: 0 }}>
+                        <div className="card-header">
+                            <h3><IndianRupee size={16} /> Revenue Growth Trend</h3>
+                        </div>
+                        <div className="card-body">
+                            <div style={{ width: '100%', height: 320, minHeight: 320, minWidth: 200 }}>
+                                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={320}>
+                                    <AreaChart data={revenueData}>
+                                        <defs>
+                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                        <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => '₹' + v} />
+                                        <Tooltip
+                                            contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
+                                        />
+                                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 <div className="card notice-card" style={{ height: 'fit-content' }}>
                     <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

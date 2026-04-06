@@ -6,7 +6,7 @@ import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
 import { 
     ChevronLeft, Plus, MoreVertical, Calendar, User, Trash2, 
-    GripVertical, LayoutGrid, Clock, DollarSign, Target, CheckCircle2, 
+    GripVertical, LayoutGrid, Clock, IndianRupee, Target, CheckCircle2, 
     AlertCircle, ExternalLink, Link as LinkIcon, FileText, Activity
 } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
@@ -229,7 +229,7 @@ export default function ProjectDetail() {
                         </button>
                         {isAdmin && (
                             <button className={`tab-btn ${activeTab === 'financials' ? 'active' : ''}`} onClick={() => setActiveTab('financials')} style={tabStyle(activeTab === 'financials')}>
-                                <DollarSign size={16} /> Financials
+                                <IndianRupee size={16} /> Financials
                             </button>
                         )}
                         {isAdmin && (
@@ -323,7 +323,7 @@ export default function ProjectDetail() {
                                         { header: 'Date', accessor: 'date', render: r => new Date(r.date).toLocaleDateString() },
                                         { header: 'Source', accessor: 'source' },
                                         { header: 'Category', accessor: 'category' },
-                                        { header: 'Amount', accessor: 'amount', render: r => <span style={{ fontWeight: 600, color: 'var(--green-600)' }}>+ ${r.amount.toLocaleString()}</span> }
+                                        { header: 'Amount', accessor: 'amount', render: r => <span style={{ fontWeight: 600, color: 'var(--green-600)' }}>+ ₹{r.amount.toLocaleString()}</span> }
                                     ]}
                                     data={projectIncome}
                                 />

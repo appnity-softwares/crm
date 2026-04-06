@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { attendanceAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { Clock, Calendar, CheckCircle, Smartphone, MapPin, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, Smartphone, MapPin, AlertCircle, RefreshCw, LogOut, QrCode } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
+import QRGenerator from '../components/attendance/QRGenerator';
 
 export default function TraineeAttendance() {
     const { user, isAdmin, isManager } = useAuth();
@@ -12,6 +13,7 @@ export default function TraineeAttendance() {
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState({ present: 0, late: 0, absent: 0 });
     const [checking, setChecking] = useState(false);
+    const [showQRGen, setShowQRGen] = useState(false);
 
     const isTrainee = user?.role === 'trainee';
 
@@ -124,6 +126,11 @@ export default function TraineeAttendance() {
                     <button className="btn btn-secondary" onClick={loadData} style={{ borderRadius: '50%', width: 40, height: 40, padding: 0 }}>
                         <RefreshCw size={18} />
                     </button>
+                    {isAdmin && (
+                        <button className="btn btn-primary" onClick={() => setShowQRGen(true)}>
+                            <QrCode size={16} /> Live QR Code
+                        </button>
+                    )}
                     {isTrainee && !todayAtt && (
                         <button className="btn btn-primary" onClick={handleCheckIn} disabled={checking}>
                             <Clock size={16} /> Mark Present
@@ -200,6 +207,7 @@ export default function TraineeAttendance() {
                     />
                 )}
             </div>
+            {showQRGen && <QRGenerator onClose={() => setShowQRGen(false)} />}
         </div>
     );
 }

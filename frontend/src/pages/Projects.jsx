@@ -4,7 +4,7 @@ import { projectAPI, employeeAPI, clientAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { Plus, Edit2, Copy, LayoutGrid, User } from 'lucide-react';
+import { Plus, Edit2, Copy, LayoutGrid, User, IndianRupee } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 export default function Projects() {
     const { user, hasElevated } = useAuth();
@@ -254,11 +254,11 @@ export default function Projects() {
                             {user?.role === 'admin' && (
                                 <>
                                     <div className="form-group">
-                                        <label>Total Contract Value ($)</label>
+                                        <label>Total Contract Value (₹)</label>
                                         <input type="number" value={form.total_value} onChange={e => setForm({ ...form, total_value: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                     <div className="form-group">
-                                        <label>Amount Paid ($)</label>
+                                        <label>Amount Paid (₹)</label>
                                         <input type="number" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                 </>

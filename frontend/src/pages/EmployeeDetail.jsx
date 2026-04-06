@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import {
     Building2, Briefcase, Clock, FolderKanban, TrendingUp,
-    ChevronLeft, ExternalLink, Filter, Target, Phone
+    ChevronLeft, ExternalLink, Filter, Target, Phone, Calendar
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -19,6 +19,7 @@ export default function EmployeeDetail() {
     const toast = useToast();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('performance'); // performance, attendance
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -331,50 +332,105 @@ export default function EmployeeDetail() {
 
                     {/* Detailed Feed Section */}
                     <div className="card">
-                        <div className="card-header">
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Clock size={18} />
-                                Full Contribution Feed
-                            </h3>
-                            <button className="btn btn-secondary btn-sm">
-                                <Filter size={14} /> Filter
-                            </button>
+                        <div className="card-header" style={{ paddingBottom: 0 }}>
+                            <div style={{ display: 'flex', gap: 24 }}>
+                                <h3 
+                                    onClick={() => setActiveTab('performance')}
+                                    style={{ 
+                                        paddingBottom: 12, borderBottom: activeTab === 'performance' ? '2px solid var(--primary-600)' : 'none', 
+                                        cursor: 'pointer', color: activeTab === 'performance' ? 'var(--primary-600)' : 'var(--text-muted)' 
+                                    }}
+                                >
+                                    <Clock size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                                    Performance Feed
+                                </h3>
+                                <h3 
+                                    onClick={() => setActiveTab('attendance')}
+                                    style={{ 
+                                        paddingBottom: 12, borderBottom: activeTab === 'attendance' ? '2px solid var(--primary-600)' : 'none', 
+                                        cursor: 'pointer', color: activeTab === 'attendance' ? 'var(--primary-600)' : 'var(--text-muted)' 
+                                    }}
+                                >
+                                    <Calendar size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                                    Presence History
+                                </h3>
+                            </div>
                         </div>
-                        <div className="table-wrapper">
-                            <table style={{ tableLayout: 'fixed' }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '120px' }}>Date</th>
-                                        <th style={{ width: '150px' }}>Project</th>
-                                        <th style={{ width: '80px' }}>Hours</th>
-                                        <th>Contribution Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {work_logs.map(log => (
-                                        <tr key={log.id}>
-                                            <td style={{ fontSize: '0.85rem' }}>{new Date(log.date).toLocaleDateString()}</td>
-                                            <td>
-                                                <span className="badge gray" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {log.project?.name || 'General Task'}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontWeight: 700, color: 'var(--primary-700)' }}>{log.hours}h</td>
-                                            <td style={{ whiteSpace: 'normal', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                                                {log.description}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {work_logs.length === 0 && (
+
+                        {activeTab === 'performance' ? (
+                            <div className="table-wrapper">
+                                <table style={{ tableLayout: 'fixed' }}>
+                                    <thead>
                                         <tr>
-                                            <td colSpan={4} style={{ textAlign: 'center', padding: '40px' }} className="text-muted">
-                                                No historical data available for this employee.
-                                            </td>
+                                            <th style={{ width: '120px' }}>Date</th>
+                                            <th style={{ width: '150px' }}>Project</th>
+                                            <th style={{ width: '80px' }}>Hours</th>
+                                            <th>Contribution Details</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {work_logs.map(log => (
+                                            <tr key={log.id}>
+                                                <td style={{ fontSize: '0.85rem' }}>{new Date(log.date).toLocaleDateString()}</td>
+                                                <td>
+                                                    <span className="badge gray" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {log.project?.name || 'General Task'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontWeight: 700, color: 'var(--primary-700)' }}>{log.hours}h</td>
+                                                <td style={{ whiteSpace: 'normal', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                                    {log.description}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {work_logs.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} style={{ textAlign: 'center', padding: '40px' }} className="text-muted">
+                                                    No historical work data available.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Check In</th>
+                                            <th>Check Out</th>
+                                            <th>Status</th>
+                                            <th>Remark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {attendance.map(att => (
+                                            <tr key={att.id}>
+                                                <td>{new Date(att.date).toLocaleDateString()}</td>
+                                                <td style={{ fontWeight: 600 }}>{att.check_in ? new Date(att.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                                                <td style={{ fontWeight: 600 }}>{att.check_out ? new Date(att.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span className={`badge ${att.status === 'present' ? 'green' : 'red'}`}>{att.status}</span>
+                                                        {att.is_late && <span className="badge amber" style={{ fontSize: '0.65rem' }}>LATE</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="text-muted" style={{ fontSize: '0.85rem' }}>{att.remark || '—'}</td>
+                                            </tr>
+                                        ))}
+                                        {attendance.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} style={{ textAlign: 'center', padding: '40px' }} className="text-muted">
+                                                    No attendance logs found for this period.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </main>
             </div>

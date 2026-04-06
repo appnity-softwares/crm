@@ -76,7 +76,7 @@ export default function CourseDetail() {
                             <BadgeDollarSign size={20} className="text-green-500" />
                             <div>
                                 <label>Program Fee</label>
-                                <span>${course.total_fee.toLocaleString()}</span>
+                                <span>₹{course.total_fee.toLocaleString()}</span>
                             </div>
                         </div>
                         <div className="hero-stat">
@@ -96,7 +96,7 @@ export default function CourseDetail() {
                     </div>
                     <div className="cta-price">
                         <span className="price-label">Total Investment</span>
-                        <span className="price-value">${course.total_fee.toLocaleString()}</span>
+                        <span className="price-value">₹{course.total_fee.toLocaleString()}</span>
                     </div>
                     <ul className="cta-features">
                         <li><CheckCircle2 size={16} /> Lifetime access</li>

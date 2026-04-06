@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -18,6 +19,7 @@ type CreateCourseInput struct {
 	Syllabus    string  `json:"syllabus"`
 	Duration    int     `json:"duration"`
 	TotalFee    float64 `json:"total_fee"`
+	Modules     string  `json:"modules"`
 }
 
 func CreateCourse(c *gin.Context) {
@@ -33,6 +35,7 @@ func CreateCourse(c *gin.Context) {
 		Syllabus:    input.Syllabus,
 		Duration:    input.Duration,
 		TotalFee:    input.TotalFee,
+		Modules:     input.Modules,
 	}
 
 	if err := database.DB.Create(&course).Error; err != nil {
@@ -69,6 +72,7 @@ type UpdateCourseInput struct {
 	Syllabus    string  `json:"syllabus"`
 	Duration    int     `json:"duration"`
 	TotalFee    float64 `json:"total_fee"`
+	Modules     string  `json:"modules"`
 	IsActive    *bool   `json:"is_active"`
 }
 
@@ -97,6 +101,9 @@ func UpdateCourse(c *gin.Context) {
 	}
 	if input.TotalFee != 0 {
 		course.TotalFee = input.TotalFee
+	}
+	if input.Modules != "" {
+		course.Modules = input.Modules
 	}
 	if input.IsActive != nil {
 		course.IsActive = *input.IsActive
@@ -182,10 +189,12 @@ func GetMyEnrollments(c *gin.Context) {
 type UpdateEnrollmentInput struct {
 	Status         string   `json:"status"`
 	EndDate        string   `json:"end_date"`
-	CompletedTopic string   `json:"completed_topic"`
-	CertLink       string   `json:"cert_link"`
-	OfferLink      string   `json:"offer_link"`
-	PaidAmount     *float64 `json:"paid_amount"`
+	CompletedTopic   string   `json:"completed_topic"`
+	CompletedModules string   `json:"completed_modules"`
+	CertLink         string   `json:"cert_link"`
+	OfferLink        string   `json:"offer_link"`
+	PaidAmount       *float64 `json:"paid_amount"`
+	Progress         *int     `json:"progress"`
 }
 
 func UpdateEnrollment(c *gin.Context) {
@@ -219,6 +228,9 @@ func UpdateEnrollment(c *gin.Context) {
 	if input.CompletedTopic != "" {
 		enrollment.CompletedTopic = input.CompletedTopic
 	}
+	if input.CompletedModules != "" {
+		enrollment.CompletedModules = input.CompletedModules
+	}
 	if input.CertLink != "" {
 		enrollment.CertLink = input.CertLink
 	}
@@ -227,6 +239,9 @@ func UpdateEnrollment(c *gin.Context) {
 	}
 	if input.PaidAmount != nil {
 		enrollment.PaidAmount = *input.PaidAmount
+	}
+	if input.Progress != nil {
+		enrollment.Progress = *input.Progress
 	}
 
 	database.DB.Save(&enrollment)
@@ -272,8 +287,20 @@ func AddEnrollmentPayment(c *gin.Context) {
 		return
 	}
 
-	// Update enrollment paid amount
+	// Update enrollment paid amount and installments JSON
 	enrollment.PaidAmount += input.Amount
+	
+	// Deserialize, append, and serialize installments
+	// This is a simple implementation, for more robust JSON handling consider a helper
+	newInstallment := fmt.Sprintf(`{"id":"%s","date":"%s","amount":%.2f,"description":"%s"}`, 
+		uuid.New().String(), input.Date, input.Amount, input.Description)
+	
+	if enrollment.Installments == "" || enrollment.Installments == "[]" {
+		enrollment.Installments = "[" + newInstallment + "]"
+	} else {
+		enrollment.Installments = enrollment.Installments[:len(enrollment.Installments)-1] + "," + newInstallment + "]"
+	}
+
 	database.DB.Save(&enrollment)
 
 	c.JSON(http.StatusCreated, income)

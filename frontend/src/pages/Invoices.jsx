@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { useNotifications } from '../context/NotificationContext';
 import Modal from '../components/ui/Modal';
-import { Receipt, Plus, Download, Eye, CheckCircle, Clock, Edit2, FileText, Send, Copy, CreditCard } from 'lucide-react';
+import { Receipt, Plus, Download, Eye, EyeOff, CheckCircle, Clock, Edit2, FileText, Send, Copy, CreditCard } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -26,6 +26,7 @@ export default function Invoices() {
     const [form, setForm] = useState({ client_name: '', client_email: '', project_id: '', amount: '', tax: '0', due_date: '' });
     const [saving, setSaving] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [showRevenue, setShowRevenue] = useState(false);
 
     const load = async () => {
         setLoading(true);
@@ -144,9 +145,9 @@ export default function Invoices() {
         { header: 'Number', accessor: 'invoice_number', render: r => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{r.invoice_number}</span> },
         { header: 'Client', accessor: 'client_name' },
         { header: 'Project', accessor: r => r.project?.name || '—' },
-        { header: 'Amount', accessor: 'amount', render: r => currency(r.amount) },
-        { header: 'Total', accessor: 'total', render: r => <span style={{ fontWeight: 700 }}>{currency(r.total)}</span> },
-        { header: 'Due', accessor: r => r.total - (r.paid_amount || 0), render: r => <span style={{ color: r.total - (r.paid_amount || 0) > 0 ? 'var(--red-500)' : 'var(--green-600)', fontWeight: 600 }}>{currency(r.total - (r.paid_amount || 0))}</span> },
+        { header: 'Amount', accessor: 'amount', render: r => currency(r.amount), show: isAdmin },
+        { header: 'Total', accessor: 'total', render: r => <span style={{ fontWeight: 700 }}>{currency(r.total)}</span>, show: isAdmin },
+        { header: 'Due', accessor: r => r.total - (r.paid_amount || 0), render: r => <span style={{ color: r.total - (r.paid_amount || 0) > 0 ? 'var(--red-500)' : 'var(--green-600)', fontWeight: 600 }}>{currency(r.total - (r.paid_amount || 0))}</span>, show: isAdmin },
         { header: 'Due Date', accessor: 'due_date', render: r => formatDate(r.due_date) },
         {
             header: 'Status',
@@ -213,22 +214,27 @@ export default function Invoices() {
                         <div className="card stat-card shadow-sm" style={{ background: 'var(--primary-50)' }}>
                             <div className="stat-icon primary"><Wallet size={20} /></div>
                             <div className="stat-content">
-                                <span className="stat-label">Available Balance</span>
-                                <div className="stat-value" style={{ color: 'var(--primary-600)' }}>₹{balanceData?.total_balance?.toLocaleString('en-IN') || '0'}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span className="stat-label">Available Balance</span>
+                                    <button onClick={() => setShowRevenue(!showRevenue)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                                        {showRevenue ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                                <div className="stat-value" style={{ color: 'var(--primary-600)' }}>{showRevenue ? `₹${balanceData?.total_balance?.toLocaleString('en-IN') || '0'}` : '₹ ••••••••'}</div>
                             </div>
                         </div>
                         <div className="card stat-card shadow-sm">
                             <div className="stat-icon green"><CheckCircle size={20} /></div>
                             <div className="stat-content">
                                 <span className="stat-label">Total Received</span>
-                                <div className="stat-value" style={{ color: 'var(--green-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                                <div className="stat-value" style={{ color: 'var(--green-600)' }}>{showRevenue ? `₹${(Array.isArray(invoices) ? invoices : []).filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}` : '₹ ••••••••'}</div>
                             </div>
                         </div>
                         <div className="card stat-card shadow-sm">
                             <div className="stat-icon amber"><Clock size={20} /></div>
                             <div className="stat-content">
                                 <span className="stat-label">Pending Collection</span>
-                                <div className="stat-value" style={{ color: 'var(--amber-600)' }}>₹{(Array.isArray(invoices) ? invoices : []).filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}</div>
+                                <div className="stat-value" style={{ color: 'var(--amber-600)' }}>{showRevenue ? `₹${(Array.isArray(invoices) ? invoices : []).filter(i => i.status !== 'paid').reduce((sum, i) => sum + i.total, 0).toLocaleString('en-IN')}` : '₹ ••••••••'}</div>
                             </div>
                         </div>
                     </div>

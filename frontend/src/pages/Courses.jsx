@@ -14,7 +14,7 @@ export default function Courses() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ title: '', description: '', syllabus: '', duration: '', total_fee: '' });
+    const [form, setForm] = useState({ title: '', description: '', syllabus: '', duration: '', total_fee: '', modules: '', resources: '' });
     const [saving, setSaving] = useState(false);
 
     const load = async () => {
@@ -44,9 +44,8 @@ export default function Courses() {
                 await trainingAPI.createCourse(payload);
                 toast('Course created successfully');
             }
-            setShowModal(false);
             setEditing(null);
-            setForm({ title: '', description: '', syllabus: '', duration: '', total_fee: '' });
+            setForm({ title: '', description: '', syllabus: '', duration: '', total_fee: '', modules: '', resources: '' });
             load();
         } catch (err) {
             toast(err.response?.data?.error || 'Failed to save', 'error');
@@ -60,7 +59,9 @@ export default function Courses() {
             description: c.description || '',
             syllabus: c.syllabus || '',
             duration: c.duration.toString(),
-            total_fee: c.total_fee.toString()
+            total_fee: c.total_fee.toString(),
+            modules: c.modules || '',
+            resources: c.resources || ''
         });
         setShowModal(true);
     };
@@ -128,7 +129,7 @@ export default function Courses() {
                     <p>Design, manage and distribute professional training programs.</p>
                 </div>
                 <div className="header-actions">
-                    <button className="btn btn-primary" style={{ padding: '10px 24px', fontWeight: 700 }} onClick={() => { setEditing(null); setForm({ title: '', description: '', syllabus: '', duration: '', total_fee: '' }); setShowModal(true); }}>
+                    <button className="btn btn-primary" style={{ padding: '10px 24px', fontWeight: 700 }} onClick={() => { setEditing(null); setForm({ title: '', description: '', syllabus: '', duration: '', total_fee: '', modules: '', resources: '' }); setShowModal(true); }}>
                         <Plus size={18} style={{marginRight: 8}} /> Build New Course
                     </button>
                 </div>
@@ -212,6 +213,16 @@ export default function Courses() {
                             <div className="form-group full">
                                 <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Core Objective / Description</label>
                                 <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What will the students achieve?..." style={{ padding: '12px 16px', borderRadius: 12 }} />
+                            </div>
+                            <div className="form-group full">
+                                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Core Modules (Checklist) *</label>
+                                <input required value={form.modules} onChange={e => setForm({ ...form, modules: e.target.value })} placeholder="e.g. Introduction, Database Design, React Basics, Deployment (Comma separated)" style={{ padding: '12px 16px', borderRadius: 12 }} />
+                                <small style={{ color: 'var(--text-muted)' }}>These will form the progress checklist for students.</small>
+                            </div>
+                            <div className="form-group full">
+                                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Global Course Resources (Comma separated links)</label>
+                                <textarea rows={2} value={form.resources} onChange={e => setForm({ ...form, resources: e.target.value })} placeholder="e.g. documentation:https://docs.link, textbook:https://drive.link" style={{ padding: '12px 16px', borderRadius: 12 }} />
+                                <small style={{ color: 'var(--text-muted)' }}>These resources will be visible to ALL students enrolled in this course.</small>
                             </div>
                             <div className="form-group full">
                                 <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>Detailed Syllabus Configuration (Markdown Enabled)</label>

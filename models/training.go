@@ -14,6 +14,8 @@ type Course struct {
 	Syllabus    string         `gorm:"type:text" json:"syllabus"` // GFM format
 	Duration    int            `json:"duration"` // in days
 	TotalFee    float64        `json:"total_fee"`
+	Modules     string         `gorm:"type:text" json:"modules"` // JSON array of strings
+	Resources   string         `gorm:"type:text" json:"resources"` // Links, global for course
 	IsActive    bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
@@ -34,14 +36,18 @@ type Enrollment struct {
 	Status         string         `gorm:"size:50;default:'active'" json:"status"` // active, completed, dropped
 	StartDate      time.Time      `json:"start_date"`
 	EndDate        *time.Time     `json:"end_date"`
-	CompletedTopic string         `gorm:"type:text" json:"completed_topic"` // JSON or text
-	CertLink       string         `gorm:"size:1000" json:"cert_link"`
-	OfferLink      string         `gorm:"size:1000" json:"offer_link"`
-	TotalFee       float64        `json:"total_fee"`
-	PaidAmount     float64        `gorm:"default:0" json:"paid_amount"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+	CompletedTopic   string         `gorm:"type:text" json:"completed_topic"` 
+	CompletedModules string         `gorm:"type:text" json:"completed_modules"` // JSON array of strings
+	CertLink         string         `gorm:"size:1000" json:"cert_link"`
+	OfferLink        string         `gorm:"size:1000" json:"offer_link"`
+	Resources        string         `gorm:"type:text" json:"resources"` // Links specific to this student
+	TotalFee         float64        `json:"total_fee"`
+	PaidAmount       float64        `gorm:"default:0" json:"paid_amount"`
+	Installments     string         `gorm:"type:text" json:"installments"` // JSON array of payment objects: [{id, date, amount, status, note}]
+	Progress         int            `gorm:"default:0" json:"progress"` // Completion percentage
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (e *Enrollment) BeforeCreate(tx *gorm.DB) error {

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { trainingAPI, attendanceAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { BookOpen, Calendar, CheckCircle, Clock, Award, FileText, MessageSquare, IndianRupee, ChevronRight, Activity, Globe } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle, Clock, Award, FileText, MessageSquare, IndianRupee, ChevronRight, Activity, Globe, CheckSquare, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -115,9 +115,48 @@ export default function TraineeDashboard() {
                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-600)' }}>{activeEnrollment.completed_topic || 'Introduction'}</div>
                             </div>
                         </div>
-                        <div style={{ padding: '32px' }}>
+                        <div style={{ padding: '32px', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 40 }}>
                             <div className="prose-syllabus-modern">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{syllabus}</ReactMarkdown>
+                            </div>
+                            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 32 }}>
+                                <h4 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}><CheckSquare size={18} /> Course Checklist</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {activeEnrollment.course?.modules?.split(',').map(m => m.trim()).filter(Boolean).map((mod, i) => {
+                                        const isDone = activeEnrollment.completed_modules?.split(',').includes(mod);
+                                        return (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: isDone ? 1 : 0.6 }}>
+                                                {isDone ? <CheckCircle className="green" size={18} /> : <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border)' }} />}
+                                                <span style={{ fontSize: '0.85rem', fontWeight: isDone ? 700 : 500, color: isDone ? 'var(--text-primary)' : 'var(--text-muted)' }}>{mod}</span>
+                                            </div>
+                                        );
+                                    })}
+                                    {(!activeEnrollment.course?.modules || activeEnrollment.course.modules === '') && (
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No modules defined yet.</div>
+                                    )}
+                                </div>
+
+                                <div style={{ marginTop: 40 }}>
+                                    <h4 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}><IndianRupee size={18} /> Installment History</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {(() => {
+                                            try {
+                                                const installments = JSON.parse(activeEnrollment.installments || '[]');
+                                                return installments.length > 0 ? installments.map((ins, i) => (
+                                                    <div key={i} style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--bg-hover)', borderLeft: '3px solid var(--green-500)' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                                            <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>₹{ins.amount}</span>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(ins.date).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{ins.description || 'Installment'}</div>
+                                                    </div>
+                                                )) : <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No installment records found.</div>;
+                                            } catch {
+                                                return <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No records yet.</div>;
+                                            }
+                                        })()}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -161,22 +200,27 @@ export default function TraineeDashboard() {
                             <h3 style={{ margin: 0, fontSize: '1rem' }}>Resources & Links</h3>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <a href="#" className="resource-link">
-                                <div className="resource-icon green"><FileText size={16} /></div>
-                                <div className="resource-info">
-                                    <div className="resource-name">Curriculum E-Book</div>
-                                    <div className="resource-meta">PDF &bull; 4.2 MB</div>
-                                </div>
-                                <ChevronRight size={16} className="text-muted" />
-                            </a>
-                            <a href="#" className="resource-link">
-                                <div className="resource-icon blue"><Globe size={16} /></div>
-                                <div className="resource-info">
-                                    <div className="resource-name">Staging Sandbox</div>
-                                    <div className="resource-meta">Dev Environment</div>
-                                </div>
-                                <ChevronRight size={16} className="text-muted" />
-                            </a>
+                            {[
+                                ...(activeEnrollment.course?.resources?.split(',') || []),
+                                ...(activeEnrollment.resources?.split(',') || [])
+                            ].filter(Boolean).map((res, i) => {
+                                const parts = res.trim().includes(':') ? res.trim().split(':') : ['Resource', res.trim()];
+                                const name = parts[0];
+                                const url = parts.slice(1).join(':');
+                                return (
+                                    <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer" className="resource-link">
+                                        <div className="resource-icon blue"><Globe size={16} /></div>
+                                        <div className="resource-info">
+                                            <div className="resource-name" style={{ textTransform: 'capitalize' }}>{name}</div>
+                                            <div className="resource-meta">External Link</div>
+                                        </div>
+                                        <ChevronRight size={16} className="text-muted" />
+                                    </a>
+                                );
+                            })}
+                            {(!activeEnrollment.course?.resources && !activeEnrollment.resources) && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No resources shared yet.</p>
+                            )}
                         </div>
                     </div>
 

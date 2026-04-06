@@ -3,7 +3,7 @@ import { trainingAPI, employeeAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { GraduationCap, Edit2, CheckCircle2, DollarSign, ExternalLink, UserPlus } from 'lucide-react';
+import { GraduationCap, Edit2, CheckCircle2, IndianRupee, ExternalLink, UserPlus, Eye, EyeOff, CheckSquare, Square, Search, Clock } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
 
 export default function Students() {
@@ -25,7 +25,8 @@ export default function Students() {
         paid_amount: '0', 
         completed_topic: '', 
         cert_link: '', 
-        offer_link: '' 
+        offer_link: '',
+        resources: ''
     });
     const [saving, setSaving] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -35,6 +36,10 @@ export default function Students() {
     const [showAddTraineeModal, setShowAddTraineeModal] = useState(false);
     const [traineeForm, setTraineeForm] = useState({ name: '', email: '', password: '', role: 'trainee' });
     const [filterStatus, setFilterStatus] = useState('all');
+    const [showRevenue, setShowRevenue] = useState(false);
+    const [selectedEnrollment, setSelectedEnrollment] = useState(null);
+    const [enrollmentPayments, setEnrollmentPayments] = useState([]);
+    const [loadingPayments, setLoadingPayments] = useState(false);
 
     const load = async () => {
         setLoading(true);
@@ -79,6 +84,7 @@ export default function Students() {
 
     const handleEdit = (en) => {
         setEditing(en.id);
+        const course = courses.find(c => c.id === en.course_id);
         setForm({
             student_id: en.student_id,
             course_id: en.course_id,
@@ -88,10 +94,48 @@ export default function Students() {
             total_fee: en.total_fee.toString(),
             paid_amount: en.paid_amount.toString(),
             completed_topic: en.completed_topic || '',
+            completed_modules: en.completed_modules || '',
             cert_link: en.cert_link || '',
-            offer_link: en.offer_link || ''
+            offer_link: en.offer_link || '',
+            resources: en.resources || ''
         });
         setShowModal(true);
+    };
+
+    const fetchPayments = async (eid) => {
+        setLoadingPayments(true);
+        try {
+            const { data } = await trainingAPI.getEnrollments({ enrollment_id: eid }); // Assuming this might work or use incomeAPI
+            // Actually let's use incomeAPI to get payments for this enrollment
+            // I'll call incomeAPI directly if available in this scope
+        } catch {} finally { setLoadingPayments(false); }
+    };
+
+    const handleOpenDetail = async (en) => {
+        setSelectedEnrollment(en);
+        // We'll also fetch payments if needed, but let's start with checklist
+    };
+
+    const toggleModule = async (en, moduleName) => {
+        const currentModules = en.completed_modules ? en.completed_modules.split(',') : [];
+        let newModules;
+        if (currentModules.includes(moduleName)) {
+            newModules = currentModules.filter(m => m !== moduleName);
+        } else {
+            newModules = [...currentModules, moduleName];
+        }
+        
+        try {
+            await trainingAPI.updateEnrollment(en.id, { completed_modules: newModules.join(',') });
+            toast(`Progress updated for ${moduleName}`);
+            load();
+            // Update local selected state if any
+            if (selectedEnrollment?.id === en.id) {
+                setSelectedEnrollment({ ...en, completed_modules: newModules.join(',') });
+            }
+        } catch {
+            toast('Failed to update module progress', 'error');
+        }
     };
 
     const handlePaymentSubmit = async (e) => {
@@ -165,12 +209,26 @@ export default function Students() {
                 return (
                     <div style={{ width: 120 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: 4 }}>
-                            <span>${r.paid_amount}</span>
+                            <span>₹{r.paid_amount}</span>
                             <span style={{ color: pct === 100 ? 'var(--green-600)' : 'var(--text-muted)' }}>{pct}%</span>
                         </div>
                         <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--green-500)' : 'var(--primary-500)' }} />
                         </div>
+                    </div>
+                );
+            }
+        },
+        { 
+            header: 'Modules', 
+            accessor: 'completed_modules', 
+            render: r => {
+                const total = r.course?.modules?.split(',').filter(Boolean).length || 0;
+                const done = r.completed_modules?.split(',').filter(Boolean).length || 0;
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => handleOpenDetail(r)}>
+                        <CheckSquare size={14} className={done === total && total > 0 ? 'green' : 'blue'} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{done}/{total}</span>
                     </div>
                 );
             }
@@ -185,7 +243,7 @@ export default function Students() {
                         <Edit2 size={12} />
                     </button>
                     <button className="btn btn-sm btn-primary" onClick={() => { setPayingEnrollment(en); setPaymentForm({ amount: '', date: new Date().toISOString().split('T')[0], description: 'Installment' }); setShowPaymentModal(true); }} title="Add Fee Payment">
-                        <DollarSign size={12} />
+                        <IndianRupee size={12} />
                     </button>
                     {(en.cert_link || en.offer_link) && (
                         <button className="btn btn-sm btn-text" onClick={() => window.open(en.cert_link || en.offer_link, '_blank')} title="View Docs">
@@ -233,13 +291,18 @@ export default function Students() {
                         <h3>{enrollments.filter(e => e.status === 'completed').length}</h3>
                     </div>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card" style={{ position: 'relative' }}>
                     <div className="stat-icon" style={{ background: 'var(--amber-100)', color: 'var(--amber-600)' }}>
-                        <DollarSign size={24} />
+                        <IndianRupee size={24} />
                     </div>
                     <div className="stat-info">
-                        <label>Revenue Collected</label>
-                        <h3>₹{(Array.isArray(enrollments) ? enrollments : []).reduce((sum, e) => sum + (e.paid_amount || 0), 0).toFixed(2)}</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label>Revenue Collected</label>
+                            <button onClick={() => setShowRevenue(!showRevenue)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                                {showRevenue ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                        </div>
+                        <h3>{showRevenue ? `₹${(Array.isArray(enrollments) ? enrollments : []).reduce((sum, e) => sum + (e.paid_amount || 0), 0).toFixed(2)}` : '₹ ••••••••'}</h3>
                     </div>
                 </div>
             </div>
@@ -313,11 +376,11 @@ export default function Students() {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label>Total Fee Agreed ($)</label>
+                                <label>Total Fee Agreed (₹)</label>
                                 <input type="number" required value={form.total_fee} onChange={e => setForm({ ...form, total_fee: e.target.value })} />
                             </div>
                             <div className="form-group">
-                                <label>Current Paid Amount (Manual override) ($)</label>
+                                <label>Current Paid Amount (Manual override) (₹)</label>
                                 <input type="number" step="0.01" value={form.paid_amount} onChange={e => setForm({ ...form, paid_amount: e.target.value })} />
                             </div>
                             <div className="form-group full">
@@ -331,6 +394,10 @@ export default function Students() {
                             <div className="form-group full">
                                 <label>Training Offer/Program Link</label>
                                 <input value={form.offer_link} onChange={e => setForm({ ...form, offer_link: e.target.value })} placeholder="Offers or Agreement Link" />
+                            </div>
+                            <div className="form-group full">
+                                <label>Student-Specific Resources (Comma separated links)</label>
+                                <textarea rows="2" value={form.resources} onChange={e => setForm({ ...form, resources: e.target.value })} placeholder="e.g. project-repo:https://github.com/..., slides:https://googledrive/..." />
                             </div>
                         </div>
                         <div className="form-actions" style={{ marginTop: 24 }}>
@@ -347,9 +414,9 @@ export default function Students() {
                 <Modal title={`Add Payment: ${payingEnrollment?.student?.name}`} onClose={() => setShowPaymentModal(false)}>
                     <form onSubmit={handlePaymentSubmit}>
                         <div className="form-group">
-                            <label>Amount ($) *</label>
+                            <label>Amount (₹) *</label>
                             <input type="number" step="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
-                            <small>This will be added to total paid: ${payingEnrollment?.paid_amount}</small>
+                            <small>This will be added to total paid: ₹{payingEnrollment?.paid_amount}</small>
                         </div>
                         <div className="form-group">
                             <label>Date *</label>
@@ -391,6 +458,83 @@ export default function Students() {
                             </button>
                         </div>
                     </form>
+                </Modal>
+            )}
+            {selectedEnrollment && (
+                <Modal title="Trainee Progress & Installments" onClose={() => setSelectedEnrollment(null)} size="lg">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24 }}>
+                        <div>
+                            <h4 style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><CheckSquare size={18} /> Module Completion Checklist</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {selectedEnrollment.course?.modules?.split(',').map(m => m.trim()).filter(Boolean).map((mod, i) => {
+                                    const isDone = selectedEnrollment.completed_modules?.split(',').includes(mod);
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            onClick={() => toggleModule(selectedEnrollment, mod)}
+                                            style={{ 
+                                                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', 
+                                                borderRadius: 10, background: isDone ? 'var(--green-50)' : 'var(--bg-hover)',
+                                                border: `1px solid ${isDone ? 'var(--green-200)' : 'var(--border)'}`,
+                                                cursor: 'pointer', transition: '0.2s'
+                                            }}
+                                        >
+                                            {isDone ? <CheckSquare className="green" size={20} /> : <Square size={20} color="var(--text-muted)" />}
+                                            <span style={{ fontWeight: 600, color: isDone ? 'var(--green-700)' : 'var(--text-primary)' }}>{mod}</span>
+                                        </div>
+                                    );
+                                })}
+                                {(!selectedEnrollment.course?.modules || selectedEnrollment.course.modules === '') && (
+                                    <div className="text-center" style={{ padding: 20, color: 'var(--text-muted)' }}>No modules defined for this course.</div>
+                                )}
+                            </div>
+                        </div>
+                        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
+                            <h4 style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><IndianRupee size={18} /> Installment History</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ padding: 16, background: 'var(--bg-app)', borderRadius: 12, marginBottom: 10 }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Fee Progress</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>₹{selectedEnrollment.paid_amount} / ₹{selectedEnrollment.total_fee}</div>
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Recent Payments</div>
+                                <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg-hover)', border: '1px dashed var(--border)', fontSize: '0.8rem', textAlign: 'center' }}>
+                                    Click the Rupee icon in the table to add more installments.
+                                </div>
+
+                                <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                                <h4 style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><ExternalLink size={18} color="var(--primary-600)" /> Student Resources</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {[
+                                        ...(selectedEnrollment.course?.resources?.split(',') || []),
+                                        ...(selectedEnrollment.resources?.split(',') || [])
+                                    ].filter(Boolean).map((res, i) => {
+                                        const parts = res.trim().includes(':') ? res.trim().split(':') : ['Resource', res.trim()];
+                                        const name = parts[0];
+                                        const url = parts.slice(1).join(':'); // handle double colons in URLs
+                                        return (
+                                            <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer" 
+                                                style={{ 
+                                                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', 
+                                                    borderRadius: 10, background: 'var(--bg-hover)', border: '1px solid var(--border)', 
+                                                    textDecoration: 'none', transition: '0.2s' 
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary-300)'}
+                                                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                                            >
+                                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <ExternalLink size={14} />
+                                                </div>
+                                                <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{name}</span>
+                                            </a>
+                                        );
+                                    })}
+                                    {(!selectedEnrollment.course?.resources && !selectedEnrollment.resources) && (
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No resources shared yet.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </div>

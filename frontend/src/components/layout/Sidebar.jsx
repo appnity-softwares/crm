@@ -114,9 +114,15 @@ export default function Sidebar() {
     return (
         <>
             {/* Mobile hamburger (only if not hidden) */}
-            <button className="mobile-menu-btn" onClick={() => setOpen(true)} style={{ position: 'fixed', top: 15, left: 15, zIndex: 100, background: 'var(--primary-600)', color: 'white', border: 'none', borderRadius: 8, padding: 8, display: 'none' }}>
-                <Menu size={20} />
-            </button>
+            {!open && (
+                <button 
+                    className="mobile-menu-btn" 
+                    onClick={() => setOpen(true)} 
+                    style={{ position: 'fixed', top: 15, left: 15, zIndex: 100, background: 'var(--primary-600)', color: 'white', border: 'none', borderRadius: 8, padding: 8 }}
+                >
+                    <Menu size={20} />
+                </button>
+            )}
 
             {/* Overlay for mobile */}
             <div className={`sidebar-overlay ${open ? 'open' : ''}`} onClick={closeMobile} />
