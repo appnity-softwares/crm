@@ -21,6 +21,7 @@ type CreateLeadInput struct {
 	Status     string     `json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
 	AssignedTo *uuid.UUID `json:"assigned_to"`
 	Notes      string     `json:"notes"`
+	Description string    `json:"description"`
 	Type       string     `json:"type" binding:"omitempty,oneof=direct outbound"`
 	SOW        string     `json:"sow"`
 }
@@ -34,6 +35,7 @@ type UpdateLeadInput struct {
 	Status             string     `json:"status" binding:"omitempty,oneof=new contacted qualified proposal won lost"`
 	AssignedTo         *uuid.UUID `json:"assigned_to"`
 	Notes              string     `json:"notes"`
+	Description        string     `json:"description"`
 	Type               string     `json:"type" binding:"omitempty,oneof=direct outbound"`
 	SOW                string     `json:"sow"`
 	AdvancePaidConfirm *bool      `json:"advance_paid_confirm"`
@@ -59,6 +61,7 @@ func CreateLead(c *gin.Context) {
 		Status:     input.Status,
 		AssignedTo: input.AssignedTo,
 		Notes:      input.Notes,
+		Description: input.Description,
 		AddedByID:  uID,
 		Type:       input.Type,
 		SOW:        input.SOW,
@@ -222,6 +225,9 @@ func UpdateLead(c *gin.Context) {
 	}
 	if input.Notes != "" {
 		updates["notes"] = input.Notes
+	}
+	if input.Description != "" {
+		updates["description"] = input.Description
 	}
 	if input.Type != "" {
 		updates["type"] = input.Type

@@ -42,6 +42,7 @@ import FinanceAnalytics from './pages/FinanceAnalytics';
 import TraineeDashboard from './pages/TraineeDashboard';
 import StudentAttendance from './pages/StudentAttendance';
 import Courses from './pages/Courses';
+import CourseDetail from './pages/CourseDetail';
 import Students from './pages/Students';
 
 function ProtectedLayout() {
@@ -122,6 +123,7 @@ export default function App() {
                                     <Route path="/settings" element={<ElevatedRoute module="role-access"><Settings /></ElevatedRoute>} />
                                     
                                     <Route path="/training/courses" element={<ElevatedRoute module="employees"><Courses /></ElevatedRoute>} />
+                                    <Route path="/training/courses/:id" element={<ElevatedRoute module="employees"><CourseDetail /></ElevatedRoute>} />
                                     <Route path="/training/students" element={<ElevatedRoute module="employees"><Students /></ElevatedRoute>} />
                                     <Route path="/training/attendance" element={<StudentAttendance />} />
                                     <Route path="*" element={<NotFound />} />

@@ -49,6 +49,20 @@ func GetCourses(c *gin.Context) {
 	c.JSON(http.StatusOK, courses)
 }
 
+func GetCourse(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+	var course models.Course
+	if err := database.DB.First(&course, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+		return
+	}
+	c.JSON(http.StatusOK, course)
+}
+
 type UpdateCourseInput struct {
 	Title       string  `json:"title"`
 	Description string  `json:"description"`

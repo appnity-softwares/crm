@@ -255,6 +255,7 @@ export const chatPermissionAPI = {
 export const trainingAPI = {
     createCourse: (data) => api.post('/training/courses', data),
     getCourses: () => api.get('/training/courses'),
+    getCourse: (id) => api.get(`/training/courses/${id}`),
     updateCourse: (id, data) => api.put(`/training/courses/${id}`, data),
     enroll: (data) => api.post('/training/enrollments', data),
     getEnrollments: (params) => api.get('/training/enrollments', { params }),

@@ -3,8 +3,9 @@ import { trainingAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
-import { Plus, Edit2, BookOpen, Clock, BadgeDollarSign, Trash2 } from 'lucide-react';
+import { Plus, Edit2, BookOpen, Clock, BadgeDollarSign, Trash2, Eye } from 'lucide-react';
 import DataTable from '../components/ui/DataTable';
+import { Link } from 'react-router-dom';
 
 export default function Courses() {
     const { isAdmin } = useAuth();
@@ -89,6 +90,9 @@ export default function Courses() {
             key: 'actions',
             render: (c) => (
                 <div style={{ display: 'flex', gap: 6 }}>
+                    <Link className="btn btn-sm btn-info" to={`/training/courses/${c.id}`} title="View Details">
+                        <Eye size={12} />
+                    </Link>
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(c)} title="Edit">
                         <Edit2 size={12} />
                     </button>

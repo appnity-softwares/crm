@@ -261,6 +261,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			// Courses
 			training.POST("/courses", middleware.RoleGuard("admin", "manager"), handlers.CreateCourse)
 			training.GET("/courses", handlers.GetCourses)
+			training.GET("/courses/:id", handlers.GetCourse)
 			training.PUT("/courses/:id", middleware.RoleGuard("admin", "manager"), handlers.UpdateCourse)
 			training.DELETE("/courses/:id", middleware.RoleGuard("admin", "manager"), handlers.DeleteCourse)
 

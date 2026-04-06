@@ -22,6 +22,7 @@ type Lead struct {
 	UserID     *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
 	User       *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Notes              string         `gorm:"type:text" json:"notes"`
+	Description        string         `gorm:"type:text" json:"description"`
 	Type               string         `gorm:"size:50;default:'outbound'" json:"type" binding:"omitempty,oneof=direct outbound"`
 	SOW                string         `gorm:"type:text" json:"sow"`
 	SOWAccepted        bool           `gorm:"default:false" json:"sow_accepted"`

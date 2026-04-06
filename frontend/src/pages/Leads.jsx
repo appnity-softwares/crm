@@ -18,7 +18,7 @@ export default function Leads() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', type: 'outbound', sow: '' });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', description: '', type: 'outbound', sow: '' });
     const [saving, setSaving] = useState(false);
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [activeLead, setActiveLead] = useState(null);
@@ -59,7 +59,7 @@ export default function Leads() {
             }
             setShowModal(false);
             setEditing(null);
-            setForm({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', type: 'outbound', sow: '' });
+            setForm({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', description: '', type: 'outbound', sow: '' });
             load();
         } catch (err) {
             toast(err.response?.data?.error || 'Failed to save', 'error');
@@ -77,6 +77,7 @@ export default function Leads() {
             status: l.status,
             assigned_to: l.assigned_to || '',
             notes: l.notes || '',
+            description: l.description || '',
             type: l.type || 'outbound',
             sow: l.sow || ''
         });
@@ -197,7 +198,7 @@ export default function Leads() {
                     <p>Track your sales pipeline and convert prospects to clients</p>
                 </div>
                 <div className="header-actions">
-                    <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', type: 'outbound', sow: '' }); setShowModal(true); }}>
+                    <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', email: '', phone: '', company: '', source: 'other', status: 'new', assigned_to: '', notes: '', description: '', type: 'outbound', sow: '' }); setShowModal(true); }}>
                         <Plus size={15} /> New Lead
                     </button>
                 </div>
@@ -286,6 +287,15 @@ export default function Leads() {
                             <div className="form-group full">
                                 <label>Internal Notes</label>
                                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Private notes for team..." />
+                            </div>
+                            <div className="form-group full">
+                                <label>Website / Problem Description (Optional)</label>
+                                <textarea 
+                                    rows={3}
+                                    value={form.description} 
+                                    onChange={e => setForm({ ...form, description: e.target.value })} 
+                                    placeholder="Enter website details, issues, or specific requirements..." 
+                                />
                             </div>
                         </div>
                         <div className="form-actions">
