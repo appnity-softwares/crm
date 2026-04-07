@@ -272,9 +272,10 @@ func GetChatPermissions(c *gin.Context) {
 	var permissions []models.ChatPermission
 	query := database.DB.Preload("Client").Preload("User").Preload("Project")
 
-	if role == "client" {
+	switch role {
+	case "client":
 		query = query.Where("client_id = ?", userId)
-	} else if role == "employee" {
+	case "employee":
 		query = query.Where("user_id = ?", userId)
 	}
 

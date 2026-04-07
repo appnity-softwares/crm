@@ -110,8 +110,10 @@ export default function CourseDetail() {
                 <div className="detail-main">
                     <section className="detail-section">
                         <h2>Course Overview</h2>
-                        <div className="overview-content">
-                            {course.description || "No description provided for this course."}
+                        <div className="overview-content markdown-content prose">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {course.description || "No description provided for this course."}
+                            </ReactMarkdown>
                         </div>
                     </section>
 
@@ -302,7 +304,6 @@ export default function CourseDetail() {
                     font-size: 1.1rem;
                     line-height: 1.8;
                     color: var(--text-secondary);
-                    white-space: pre-wrap;
                     background: var(--bg-card);
                     padding: 32px;
                     border-radius: 16px;
@@ -318,15 +319,16 @@ export default function CourseDetail() {
                     max-width: none;
                     color: var(--text-primary);
                 }
-                .markdown-content.prose h1 { font-size: 2rem; margin: 40px 0 20px; color: var(--primary-600); border-bottom: 2px solid var(--primary-100); padding-bottom: 12px; }
-                .markdown-content.prose h2 { font-size: 1.5rem; margin: 32px 0 16px; color: var(--text-primary); }
-                .markdown-content.prose h3 { font-size: 1.25rem; margin: 24px 0 12px; }
+                .markdown-content.prose h1 { font-size: 2rem; margin: 0 0 20px; color: var(--primary-600); border-bottom: 2px solid var(--primary-100); padding-bottom: 12px; }
+                .markdown-content.prose h2 { font-size: 1.5rem; margin: 24px 0 16px; color: var(--text-primary); }
+                .markdown-content.prose h3 { font-size: 1.25rem; margin: 20px 0 12px; }
                 .markdown-content.prose p { margin-bottom: 20px; line-height: 1.8; color: var(--text-secondary); }
                 .markdown-content.prose ul { padding-left: 20px; margin-bottom: 20px; list-style-type: disc; }
                 .markdown-content.prose ul li { margin-bottom: 8px; color: var(--text-secondary); }
-                .markdown-content.prose table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
-                .markdown-content.prose th, .markdown-content.prose td { padding: 12px; border: 1px solid var(--border); text-align: left; }
-                .markdown-content.prose th { background: var(--bg-hover); font-weight: 700; }
+                .markdown-content.prose li input[type="checkbox"] { margin-right: 8px; transform: scale(1.1); vertical-align: middle; }
+                .markdown-content.prose table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; background: var(--bg-body); border-radius: 8px; overflow: hidden; }
+                .markdown-content.prose th, .markdown-content.prose td { padding: 12px 16px; border: 1px solid var(--border); text-align: left; }
+                .markdown-content.prose th { background: var(--primary-50); color: var(--primary-700); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
                 
                 .sidebar-card {
                     background: var(--bg-card);
