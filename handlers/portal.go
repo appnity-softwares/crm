@@ -492,3 +492,22 @@ func PortalChatStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": permission.Status, "permission_id": permission.ID})
 }
+
+// PortalRequestUnlock allows an anonymous client to request a portal unlock
+func PortalRequestUnlock(c *gin.Context) {
+	token := c.Param("token")
+
+	var project models.Project
+	if err := database.DB.Select("id", "created_by", "name").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		// Try UUID fallback
+		if err := database.DB.Select("id", "created_by", "name").First(&project, "id = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+	}
+
+	// Create a notification for the PM
+	CreateNotification(project.CreatedBy, "warning", "Portal Unlock Request", "The client for '"+project.Name+"' has requested to unlock their portal.")
+
+	c.JSON(http.StatusOK, gin.H{"message": "Unlock request sent to your project lead. You will be notified once access is restored."})
+}

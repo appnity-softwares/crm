@@ -203,6 +203,7 @@ export const portalAPI = {
     updateSOW: (token, data) => api.post(`/portal/${token}/sow`, data),
     requestChat: (token, data) => api.post(`/portal/${token}/chat-request`, data),
     getChatStatus: (token) => api.get(`/portal/${token}/chat-status`),
+    requestUnlock: (token) => api.post(`/portal/${token}/unlock-request`),
 };
 
 export const ticketAPI = {

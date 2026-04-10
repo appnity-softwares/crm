@@ -12,6 +12,7 @@ export default function ClientPortal() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [unlockRequested, setUnlockRequested] = useState(false);
     const [tickets, setTickets] = useState([]);
     const [showTicketModal, setShowTicketModal] = useState(false);
     const [ticketForm, setTicketForm] = useState({ subject: '', description: '', priority: 'medium' });
@@ -130,9 +131,25 @@ export default function ClientPortal() {
             <ShieldCheck size={64} className="text-red-500" />
             <h1>Access Restricted</h1>
             <p>This secure portal link has been restricted or is invalid. Please contact your project lead for access.</p>
-            <button className="btn btn-indigo" onClick={() => window.location.href = 'mailto:support@appnity.cloud?subject=Portal Access Request'}>
-                Contact Support
-            </button>
+            <div style={{ display: 'flex', gap: 15, marginTop: 20 }}>
+                <button 
+                    className="btn btn-indigo" 
+                    disabled={unlockRequested}
+                    onClick={async () => {
+                        try {
+                            await portalAPI.requestUnlock(token);
+                            setUnlockRequested(true);
+                            toast("Unlock request sent!", "success");
+                        } catch { toast("Failed to send request", "error"); }
+                    }}
+                >
+                    {unlockRequested ? 'Unlock Requested' : 'Message to Unlock'}
+                </button>
+                <button className="btn btn-secondary" onClick={() => window.location.href = 'mailto:support@appnity.cloud?subject=Portal Access Request'}>
+                    Contact Support
+                </button>
+            </div>
+            {unlockRequested && <p style={{ fontSize: '0.8rem', color: 'var(--green-500)', marginTop: 15 }}>Your project lead has been notified.</p>}
         </div>
     );
 
