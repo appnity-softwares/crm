@@ -35,7 +35,7 @@ func GetPortalData(c *gin.Context) {
 
 	// Check if token belongs to a project
 	var project models.Project
-	err = database.DB.First(&project, "client_portal_token = ?", token).Error
+	err = database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "client_portal_token = ?", token).Error
 	if err == nil {
 		// Found project, fetch its invoices, updates and comments
 		var invoices []models.Invoice

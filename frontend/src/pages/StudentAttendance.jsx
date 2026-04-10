@@ -7,7 +7,8 @@ import DataTable from '../components/ui/DataTable';
 import QRScanner from '../components/attendance/QRScanner';
 
 export default function StudentAttendance() {
-    const { user, isTrainee } = useAuth();
+    const { user, hasElevated } = useAuth();
+    const isTrainee = user?.role === 'trainee';
     const toast = useToast();
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,19 +20,17 @@ export default function StudentAttendance() {
         try {
             let enData = [];
             
-            if (isTrainee) {
-                try {
-                    const enRes = await trainingAPI.getMyEnrollments();
-                    enData = enRes.data || [];
-                } catch (e) {
-                    console.log('Failed to fetch enrollments');
-                }
+            const params = { limit: 100 };
+            if (hasElevated) {
+                params.role = 'trainee';
             }
 
-            const attRes = await attendanceAPI.getMine({ limit: 100 });
+            const attRes = hasElevated 
+                ? await attendanceAPI.getAll(params)
+                : await attendanceAPI.getMine(params);
             
             // Only show one active enrollment for simplicity
-            if (enData.length > 0) {
+            if (!hasElevated && enData.length > 0) {
                 setEnrollment(enData[0]);
             }
             
@@ -57,6 +56,7 @@ export default function StudentAttendance() {
     };
 
     const columns = [
+        { header: 'Student', accessor: r => r.user?.name || '—', show: hasElevated },
         { header: 'Date', accessor: 'date', render: r => formatDate(r.date) },
         { header: 'Check In', accessor: 'check_in', render: r => formatTime(r.check_in) },
         { header: 'Check Out', accessor: 'check_out', render: r => formatTime(r.check_out) },
@@ -92,42 +92,46 @@ export default function StudentAttendance() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, marginBottom: 24 }}>
-                <div className="card" style={{ padding: 24, background: 'var(--primary-50)', border: '1px solid var(--primary-100)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h3 style={{ margin: 0, color: 'var(--primary-700)' }}>Current Session</h3>
-                            {todayRecord ? (
-                                <p style={{ fontSize: '0.9rem', color: 'var(--primary-600)', margin: '8px 0 0' }}>
-                                    You checked in at <strong>{formatTime(todayRecord.check_in)}</strong> today.
-                                </p>
-                            ) : (
-                                <p style={{ fontSize: '0.9rem', color: 'var(--primary-600)', margin: '8px 0 0' }}>
-                                    You haven't checked in yet today.
-                                </p>
-                            )}
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--primary-600)' }}>Today's Time</div>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-700)' }}>
-                                {calculateHours(todayRecord?.check_in, todayRecord?.check_out || new Date())}
+                {!hasElevated && (
+                    <div className="card" style={{ padding: 24, background: 'var(--primary-50)', border: '1px solid var(--primary-100)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ margin: 0, color: 'var(--primary-700)' }}>Current Session</h3>
+                                {todayRecord ? (
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--primary-600)', margin: '8px 0 0' }}>
+                                        You checked in at <strong>{formatTime(todayRecord.check_in)}</strong> today.
+                                    </p>
+                                ) : (
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--primary-600)', margin: '8px 0 0' }}>
+                                        You haven't checked in yet today.
+                                    </p>
+                                )}
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--primary-600)' }}>Today's Time</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-700)' }}>
+                                    {calculateHours(todayRecord?.check_in, todayRecord?.check_out || new Date())}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: 12 }}>Course Info</h3>
-                    {enrollment ? (
-                        <>
-                            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{enrollment.course?.title}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                                Status: <span className="badge blue" style={{ fontSize: '0.6rem' }}>{enrollment.status}</span>
-                            </div>
-                        </>
-                    ) : (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No active enrollment</p>
-                    )}
-                </div>
+                {!hasElevated && (
+                    <div className="card" style={{ padding: 20 }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: 12 }}>Course Info</h3>
+                        {enrollment ? (
+                            <>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{enrollment.course?.title}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                    Status: <span className="badge blue" style={{ fontSize: '0.6rem' }}>{enrollment.status}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No active enrollment</p>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="card">

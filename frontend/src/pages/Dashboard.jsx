@@ -190,7 +190,7 @@ export default function Dashboard() {
                         </div>
                         <div className="card-body">
                             <div style={{ width: '100%', height: 320, minHeight: 320, minWidth: 200 }}>
-                                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={320}>
+                                <ResponsiveContainer width="100%" height={320} minWidth={200} minHeight={320}>
                                     <AreaChart data={revenueData}>
                                         <defs>
                                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -256,7 +256,7 @@ export default function Dashboard() {
                         Project Distribution
                     </h3>
                     <div style={{ width: '100%', height: 300, minHeight: 300, minWidth: 200, marginTop: 20 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
+                        <ResponsiveContainer width="100%" height={320} minWidth={200} minHeight={300}>
                             <BarChart data={projectData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
@@ -277,7 +277,7 @@ export default function Dashboard() {
                         Attendance Trend
                     </h3>
                     <div style={{ width: '100%', height: 300, minHeight: 300, minWidth: 200, marginTop: 20 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
+                        <ResponsiveContainer width="100%" height={320} minWidth={200} minHeight={300}>
                             <AreaChart data={statsData?.attendance_trend || []}>
                                 <defs>
                                     <linearGradient id="colorAtt" x1="0" y1="0" x2="0" y2="1">
@@ -301,7 +301,7 @@ export default function Dashboard() {
                         Departmental Breakdown
                     </h3>
                     <div style={{ width: '100%', height: 300, minWidth: 200, marginTop: 20 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={300}>
+                        <ResponsiveContainer width="100%" height={320} minWidth={200} minHeight={300}>
                             <PieChart>
                                 <Pie
                                     data={deptData}

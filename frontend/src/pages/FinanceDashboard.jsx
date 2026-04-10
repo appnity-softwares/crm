@@ -63,7 +63,7 @@ export default function FinanceDashboard() {
                     </div>
                     <div className="card-body">
                         <div style={{ width: '100%', height: 350, minHeight: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={[{ name: 'Total', income: data.total_income, expense: data.total_expense }]}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="name" />
@@ -83,7 +83,7 @@ export default function FinanceDashboard() {
                     </div>
                     <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ width: '100%', height: 350, minHeight: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={320}>
                                 <PieChart>
                                     <Pie
                                         data={pieData}

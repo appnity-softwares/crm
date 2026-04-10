@@ -37,6 +37,7 @@ export default function Attendance() {
     const load = async () => {
         setLoading(true);
         const params = {};
+        if (hasElevated && !filterEmployee) params.role = 'employee'; 
         if (filterEmployee) params.user_id = filterEmployee;
         
         if (filterDate) {

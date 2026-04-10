@@ -108,7 +108,7 @@ export default function FinanceAnalytics() {
                         <BarChart3 size={18} style={{ color: '#64748b' }} />
                     </div>
                     <div style={{ height: 350 }}>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={320}>
                             <BarChart data={safeProjectRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                                 <XAxis dataKey="name" fontSize={12} stroke="var(--text-muted)" />
@@ -127,7 +127,7 @@ export default function FinanceAnalytics() {
                     <div className="card shadow-sm" style={{ padding: 24, flex: 1 }}>
                         <h3 style={{ margin: '0 0 20px 0', fontSize: '0.95rem' }}>Expense Distribution</h3>
                         <div style={{ height: 250 }}>
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height={320}>
                                 <PieChart>
                                     <Pie
                                         data={safeExpenseCategories}
@@ -152,7 +152,7 @@ export default function FinanceAnalytics() {
             <div className="card shadow-sm" style={{ padding: 24, marginTop: 30 }}>
                 <h3 style={{ margin: '0 0 20px 0' }}>Financial Trajectory</h3>
                 <div style={{ height: 350 }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={320}>
                         <AreaChart data={safeTrend}>
                             <defs>
                                 <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
