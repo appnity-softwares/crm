@@ -21,6 +21,7 @@ export default function ClientPortal() {
     const [sowForm, setSowForm] = useState({ sow: '' });
     const [savingSOW, setSavingSOW] = useState(false);
 
+    const [chatStatus, setChatStatus] = useState('none');
     const [agreed, setAgreed] = useState(false);
 
     const load = async () => {
@@ -29,6 +30,9 @@ export default function ClientPortal() {
             setData(res.data);
             const tRes = await portalAPI.getTickets(token);
             setTickets(tRes.data.tickets || []);
+            
+            const cRes = await portalAPI.getChatStatus(token);
+            setChatStatus(cRes.data.status);
         } catch (err) {
             toast("Invalid portal link", "error");
         } finally {
@@ -125,7 +129,10 @@ export default function ClientPortal() {
         <div className="portal-error">
             <ShieldCheck size={64} className="text-red-500" />
             <h1>Access Restricted</h1>
-            <p>This secure portal link has expired or is invalid. Please contact support.</p>
+            <p>This secure portal link has been restricted or is invalid. Please contact your project lead for access.</p>
+            <button className="btn btn-indigo" onClick={() => window.location.href = 'mailto:support@appnity.cloud?subject=Portal Access Request'}>
+                Contact Support
+            </button>
         </div>
     );
 
@@ -365,16 +372,28 @@ export default function ClientPortal() {
                                 <span>{project?.creator?.role || 'Project Lead'}</span>
                             </div>
                         </div>
-                        <button className="btn btn-indigo btn-block" onClick={async () => {
-                            if (!project) return;
-                            try {
-                                await portalAPI.requestChat(token, { user_id: project.created_by });
-                                toast("Chat Request Sent!", "success");
-                            } catch (err) {
-                                toast(err.response?.data?.error || "Error", "error");
-                            }
-                        }}>
-                             <MessageSquare size={16} /> Request Chat
+                        <button 
+                            className={`btn btn-block ${chatStatus === 'approved' ? 'btn-green' : 'btn-indigo'}`} 
+                            disabled={chatStatus === 'requested' || chatStatus === 'rejected'}
+                            onClick={async () => {
+                                if (chatStatus === 'approved') {
+                                    window.open('/chat', '_blank');
+                                    return;
+                                }
+                                if (!project) return;
+                                try {
+                                    await portalAPI.requestChat(token, { user_id: project.created_by });
+                                    toast("Chat Request Sent!", "success");
+                                    setChatStatus('requested');
+                                } catch (err) {
+                                    toast(err.response?.data?.error || "Error", "error");
+                                }
+                            }}
+                        >
+                             <MessageSquare size={16} /> 
+                             {chatStatus === 'requested' ? 'Access Pending...' : 
+                              chatStatus === 'approved' ? 'Open Chat' : 
+                              chatStatus === 'rejected' ? 'Access Denied' : 'Request Chat Access'}
                         </button>
                     </div>
 

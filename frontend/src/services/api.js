@@ -202,6 +202,7 @@ export const portalAPI = {
     acceptSOW: (token) => api.post(`/portal/${token}/sow/accept`),
     updateSOW: (token, data) => api.post(`/portal/${token}/sow`, data),
     requestChat: (token, data) => api.post(`/portal/${token}/chat-request`, data),
+    getChatStatus: (token) => api.get(`/portal/${token}/chat-status`),
 };
 
 export const ticketAPI = {

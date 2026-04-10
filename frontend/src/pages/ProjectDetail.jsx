@@ -359,7 +359,7 @@ export default function ProjectDetail() {
                                 <h3 style={{ fontSize: '0.95rem', margin: 0 }}>Client Portal</h3>
                             </div>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Share this secure link with the client to let them track progress and pay invoices.</p>
-                            <div style={{ display: 'flex', gap: 10 }}>
+                            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                                 <button className="btn btn-primary btn-sm flex-1" onClick={() => {
                                     const token = project.client_portal_token || project.id;
                                     const link = `${window.location.origin}/portal/${token}`;
@@ -373,6 +373,20 @@ export default function ProjectDetail() {
                                     window.open(`/portal/${token}`, '_blank');
                                 }}>
                                     Preview
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: project.portal_locked ? 'var(--red-50)' : 'var(--green-50)', borderRadius: 12, border: `1px solid ${project.portal_locked ? 'var(--red-200)' : 'var(--green-200)'}` }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: project.portal_locked ? 'var(--red-700)' : 'var(--green-700)' }}>
+                                    {project.portal_locked ? 'Portal restricted' : 'Portal active'}
+                                </span>
+                                <button className={`btn btn-sm ${project.portal_locked ? 'btn-primary' : 'btn-secondary'}`} onClick={async () => {
+                                    try {
+                                        await projectAPI.update(project.id, { portal_locked: !project.portal_locked });
+                                        toast(`Portal ${project.portal_locked ? 'unlocked' : 'locked'} successfully!`);
+                                        load();
+                                    } catch { toast('Failed to update portal status', 'error'); }
+                                }}>
+                                    {project.portal_locked ? 'Unlock' : 'Lock'}
                                 </button>
                             </div>
                         </div>

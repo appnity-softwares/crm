@@ -19,6 +19,7 @@ type Project struct {
 	SOW                  string         `gorm:"type:text" json:"sow"`
 	SOWAcceptedByClient  bool           `gorm:"default:false" json:"sow_accepted_by_client"`
 	SOWAcceptedByAdmin   bool           `gorm:"default:false" json:"sow_accepted_by_admin"`
+	PortalLocked         bool           `gorm:"default:false" json:"portal_locked"`
 	PortalToken          string         `gorm:"column:client_portal_token;size:100;uniqueIndex" json:"client_portal_token"`
 	StartDate            time.Time      `gorm:"type:date" json:"start_date"`
 	EndDate         *time.Time     `gorm:"type:date" json:"end_date"`

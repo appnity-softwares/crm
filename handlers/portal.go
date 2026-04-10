@@ -54,6 +54,10 @@ func GetPortalData(c *gin.Context) {
 	// 2. Try Lookup by Project Portal Token
 	var project models.Project
 	if err := database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "client_portal_token = ?", token).Error; err == nil {
+		if project.PortalLocked {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access to this portal has been restricted by the administrator"})
+			return
+		}
 		returnProjectPortalData(c, project)
 		return
 	}
@@ -61,6 +65,10 @@ func GetPortalData(c *gin.Context) {
 	// 3. Fallback: Try Lookup by Project UUID (if token is a valid UUID)
 	if _, uuidErr := uuid.Parse(token); uuidErr == nil {
 		if err := database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "id = ?", token).Error; err == nil {
+			if project.PortalLocked {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access to this portal has been restricted by the administrator"})
+				return
+			}
 			returnProjectPortalData(c, project)
 			return
 		}
@@ -453,4 +461,34 @@ func PortalUpdateSOW(c *gin.Context) {
 	CreateNotification(project.CreatedBy, "message", "New SOW Proposal", "The client proposed a new SOW for '"+project.Name+"'")
 
 	c.JSON(http.StatusOK, gin.H{"message": "SOW proposal submitted successfully"})
+}
+
+// PortalChatStatus checks if the client has an approved chat request for this project lead
+func PortalChatStatus(c *gin.Context) {
+	token := c.Param("token")
+
+	var project models.Project
+	if err := database.DB.Select("id", "client_id", "created_by").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		// Try invoice token fallback
+		var invoice models.Invoice
+		if err := database.DB.Select("project_id", "client_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+			database.DB.Select("id", "client_id", "created_by").First(&project, "id = ?", invoice.ProjectID)
+		} else {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+	}
+
+	if project.ClientID == nil {
+		c.JSON(http.StatusOK, gin.H{"status": "none"})
+		return
+	}
+
+	var permission models.ChatPermission
+	if err := database.DB.Where("client_id = ? AND user_id = ? AND project_id = ?", project.ClientID, project.CreatedBy, project.ID).Order("created_at DESC").First(&permission).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{"status": "none"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": permission.Status, "permission_id": permission.ID})
 }

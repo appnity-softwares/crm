@@ -30,6 +30,7 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			portal.POST("/:token/tickets", handlers.PortalCreateTicket)
 			portal.POST("/:token/comments", handlers.PortalPostComment)
 			portal.POST("/:token/chat-request", handlers.PortalRequestChat)
+			portal.GET("/:token/chat-status", handlers.PortalChatStatus)
 			portal.GET("/:token/tickets", handlers.GetProjectTickets)
 			portal.POST("/:token/sow/accept", handlers.PortalAcceptSOW)
 			portal.POST("/:token/sow", handlers.PortalUpdateSOW)
