@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // parseDate parses a date string in YYYY-MM-DD format
@@ -31,4 +32,14 @@ func parsePagination(c *gin.Context) (int, int) {
 		}
 	}
 	return page, limit
+}
+
+// GetSafeUserID extracts the user ID securely from Gin Context without panicking
+func GetSafeUserID(c *gin.Context) (uuid.UUID, bool) {
+	userIdStr, exists := c.Get("user_id")
+	if !exists || userIdStr == nil {
+		return uuid.Nil, false
+	}
+	uid, ok := userIdStr.(uuid.UUID)
+	return uid, ok
 }

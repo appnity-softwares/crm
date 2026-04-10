@@ -230,8 +230,12 @@ func DeleteEmployee(c *gin.Context) {
 }
 
 func UpdateProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 
 	var input struct {
 		Name        string `json:"name"`
@@ -248,7 +252,7 @@ func UpdateProfile(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := database.DB.First(&user, "id = ?", uid).Error; err != nil {
+	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -278,7 +282,7 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	database.DB.First(&user, "id = ?", uid)
+	database.DB.First(&user, "id = ?", userID)
 	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully", "user": user})
 }
 

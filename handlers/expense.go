@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/pushp314/erp-crm/database"
 	"github.com/pushp314/erp-crm/models"
 	"gorm.io/gorm"
@@ -32,8 +31,11 @@ func CreateExpense(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	date, err := parseDate(input.Date)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, use YYYY-MM-DD"})
@@ -46,14 +48,15 @@ func CreateExpense(c *gin.Context) {
 		Amount:      input.Amount,
 		Date:        date,
 		Category:    input.Category,
-		AddedBy:     userID.(uuid.UUID),
+		AddedBy:     userID,
 	}
 
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&expense).Error; err != nil {
 			return err
 		}
-		return AdjustBalance(tx, -expense.Amount, "expense", expense.Title, expense.Description)
+		refKey := "expense_create_" + expense.ID.String()
+		return SafeAdjustBalance(tx, -expense.Amount, "expense", refKey, expense.Title)
 	})
 
 	if err != nil {

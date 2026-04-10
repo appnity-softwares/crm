@@ -40,8 +40,11 @@ func CreateIncome(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	date, err := parseDate(input.Date)
 	if err != nil {
@@ -56,14 +59,15 @@ func CreateIncome(c *gin.Context) {
 		Category:    input.Category,
 		Date:        date,
 		ProjectID:   input.ProjectID,
-		CreatedBy:   uid,
+		CreatedBy:   userID,
 	}
 
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&income).Error; err != nil {
 			return err
 		}
-		return AdjustBalance(tx, income.Amount, "income", income.Source, income.Description)
+		refKey := "income_" + income.ID.String()
+		return SafeAdjustBalance(tx, income.Amount, "income", refKey, income.Source)
 	})
 
 	if err != nil {

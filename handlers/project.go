@@ -50,8 +50,11 @@ type TransferMemberInput struct {
 
 // CreateProject creates a new project
 func CreateProject(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var input CreateProjectInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -70,7 +73,7 @@ func CreateProject(c *gin.Context) {
 		Description: input.Description,
 		Status:      input.Status,
 		StartDate:   startDate,
-		CreatedBy:   uid,
+		CreatedBy:   userID,
 		ClientID:    input.ClientID,
 		TotalValue:  input.TotalValue,
 		AmountPaid:  input.AmountPaid,
@@ -155,8 +158,11 @@ func GetProject(c *gin.Context) {
 	}
 
 	userRole, _ := c.Get("user_role")
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	uid, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	// Admin and Manager can see everything
 	if userRole != "admin" && userRole != "manager" {
@@ -198,8 +204,11 @@ func UpdateProject(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	uid, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	userRole, _ := c.Get("user_role")
 
 	// Check if user is admin/manager OR an assigned employee
@@ -498,14 +507,18 @@ func ApproveProjectUpdate(c *gin.Context) {
 
 // CreateProjectUpdate adds a new link/update to a project
 func CreateProjectUpdate(c *gin.Context) {
-	userId, _ := c.Get("user_id")
+	userId, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	var input models.ProjectUpdate
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	input.CreatedBy = userId.(uuid.UUID)
+	input.CreatedBy = userId
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project update"})
 		return
@@ -533,14 +546,18 @@ func GetProjectUpdates(c *gin.Context) {
 
 // CreateProjectComment adds a comment to an update
 func CreateProjectComment(c *gin.Context) {
-	userId, _ := c.Get("user_id")
+	userId, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	var input models.ProjectComment
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	input.UserID = userId.(uuid.UUID)
+	input.UserID = userId
 	if err := database.DB.Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post comment"})
 		return
@@ -614,8 +631,11 @@ func SignProjectSOW(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-	uid := userID.(uuid.UUID)
+	uid, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var project models.Project
 	if err := database.DB.First(&project, "id = ?", id).Error; err != nil {

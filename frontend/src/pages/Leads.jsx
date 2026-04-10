@@ -43,7 +43,7 @@ export default function Leads() {
         setSaving(true);
         try {
             const payload = { ...form };
-            if (!payload.assigned_to) delete payload.assigned_to;
+            if (!payload.assigned_to) payload.assigned_to = null;
 
             if (editing) {
                 await leadAPI.update(editing, payload);
@@ -119,14 +119,14 @@ export default function Leads() {
         e.preventDefault();
         setSaving(true);
         try {
-            await leadAPI.convertToClient(activeLead.id, {
+            const res = await leadAPI.convertToClient(activeLead.id, {
                 ...convertForm,
                 total_value: parseFloat(convertForm.total_value),
                 advance_payment: parseFloat(convertForm.advance_payment) || 0
             });
             toast('Lead successfully converted to Client!', 'success');
             setShowConvertModal(false);
-            load();
+            window.location.href = `/projects/${res.data.project.id}`;
         } catch (err) {
             toast(err.response?.data?.error || 'Failed to convert lead', 'error');
         } finally { setSaving(false); }

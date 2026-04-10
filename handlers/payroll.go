@@ -105,7 +105,11 @@ func GetAllPayroll(c *gin.Context) {
 
 // GetMyPayroll returns the authenticated user's payroll records
 func GetMyPayroll(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var records []models.Payroll
 	query := database.DB.Where("user_id = ?", userID)
@@ -157,7 +161,9 @@ func UpdatePayroll(c *gin.Context) {
 	payroll.CalculateNetSalary()
 
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		if input.Status == "paid" && payroll.Status != "paid" {
+		wasPaid := payroll.Status == "paid"
+
+		if input.Status == "paid" && !wasPaid {
 			now := time.Now()
 			payroll.PaidAt = &now
 			payroll.Status = "paid"
@@ -169,11 +175,12 @@ func UpdatePayroll(c *gin.Context) {
 			return err
 		}
 
-		if payroll.Status == "paid" && input.Status == "paid" {
+		if !wasPaid && payroll.Status == "paid" {
 			// Extract user name for reference
 			var emp models.User
 			tx.First(&emp, "id = ?", payroll.UserID)
-			return AdjustBalance(tx, -payroll.NetSalary, "expense", "Payroll: "+emp.Name, "Salary for "+time.Month(payroll.Month).String()+" "+time.Now().Format("2006"))
+			refKey := "payroll_payout_" + payroll.ID.String()
+			return SafeAdjustBalance(tx, -payroll.NetSalary, "expense", refKey, "Salary for "+time.Month(payroll.Month).String()+" "+time.Now().Format("2006"))
 		}
 		return nil
 	})

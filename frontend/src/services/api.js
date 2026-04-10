@@ -23,15 +23,20 @@ api.interceptors.response.use(
         const original = error.config;
         if (error.response?.status === 401 && !original._retry) {
             original._retry = true;
+            const refresh = localStorage.getItem('refresh_token');
+            if (!refresh) {
+                localStorage.clear();
+                window.dispatchEvent(new Event('auth_logout'));
+                return Promise.reject(error);
+            }
             try {
-                const refresh = localStorage.getItem('refresh_token');
                 const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refresh });
                 localStorage.setItem('access_token', data.access_token);
                 original.headers.Authorization = `Bearer ${data.access_token}`;
                 return api(original);
             } catch {
                 localStorage.clear();
-                window.location.href = '/login';
+                window.dispatchEvent(new Event('auth_logout'));
             }
         }
         return Promise.reject(error);

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -95,10 +96,19 @@ func PortalPostComment(c *gin.Context) {
 		return
 	}
 
+	// Support anonymous client access to portal comments
 	comment := models.ProjectComment{
 		UpdateID: input.UpdateID,
-		UserID:   clientID,
 		Content:  input.Content,
+	}
+
+	if clientID != uuid.Nil {
+		comment.UserID = clientID
+	} else {
+		// If project has no client assigned yet, associate with project creator as fallback/system
+		var proj models.Project
+		database.DB.First(&proj, "id = ?", projectID)
+		comment.UserID = proj.CreatedBy
 	}
 
 	if err := database.DB.Create(&comment).Error; err != nil {
@@ -177,7 +187,7 @@ func InitializePayment(c *gin.Context) {
 	client := razorpay.NewClient(config.AppConfig.RazorpayKeyID, config.AppConfig.RazorpayKeySecret)
 
 	data := map[string]any{
-		"amount":   int(invoice.Total * 100), // in paise
+		"amount":   int(math.Round(invoice.Total * 100)), // mathematically safe rounding
 		"currency": "INR",
 		"receipt":  invoice.InvoiceNumber,
 	}
@@ -233,14 +243,20 @@ func VerifyPayment(c *gin.Context) {
 
 	// Update invoice as paid
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// Idempotency check
+		if invoice.Status == "paid" {
+			return nil
+		}
+
 		invoice.PaidAmount = invoice.Total
 		invoice.Status = "paid"
 		if err := tx.Save(&invoice).Error; err != nil {
 			return err
 		}
 
-		// Adjust company balance
-		return AdjustBalance(tx, invoice.Total, "income", "Payment: "+invoice.InvoiceNumber, "Razorpay Payment from Portal")
+		// Adjust company balance safely
+		refKey := "razorpay_" + input.RazorpayPaymentID
+		return SafeAdjustBalance(tx, invoice.Total, "income", refKey, "Razorpay Payment from Portal")
 	})
 
 	if err != nil {

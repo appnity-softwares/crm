@@ -222,12 +222,18 @@ func UpdateInvoiceStatus(c *gin.Context) {
 	}
 
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		// Idempotency: Skip logic if already paid
+		if invoice.Status == "paid" && input.Status == "paid" {
+			return nil // Already processed
+		}
+
 		if err := tx.Model(&invoice).Update("status", input.Status).Error; err != nil {
 			return err
 		}
 
 		if input.Status == "paid" {
-			return AdjustBalance(tx, invoice.Total, "income", "Invoice: "+invoice.ID.String(), "Payment from "+invoice.ClientName)
+			refKey := "invoice_payment_" + invoice.ID.String()
+			return SafeAdjustBalance(tx, invoice.Total, "income", refKey, "Payment from "+invoice.ClientName)
 		}
 		return nil
 	})

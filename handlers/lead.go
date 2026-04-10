@@ -270,11 +270,14 @@ func DeleteLead(c *gin.Context) {
 
 // SubmitRequirement allows a prospect user to submit their project needs
 func GetMyLeadProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	uID := userID.(uuid.UUID)
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var lead models.Lead
-	if err := database.DB.Where("user_id = ?", uID).Order("created_at DESC").First(&lead).Error; err != nil {
+	if err := database.DB.Where("user_id = ?", userID).Order("created_at DESC").First(&lead).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "No requirement profile found"})
 		return
 	}
@@ -295,11 +298,14 @@ func SubmitRequirement(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-	uID := userID.(uuid.UUID)
+	userID, exists := GetSafeUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var user models.User
-	database.DB.First(&user, "id = ?", uID)
+	database.DB.First(&user, "id = ?", userID)
 
 	lead := models.Lead{
 		Name:      input.Name,
@@ -309,8 +315,8 @@ func SubmitRequirement(c *gin.Context) {
 		Source:    "website",
 		Status:    "new",
 		Notes:     input.Notes,
-		UserID:    &uID,
-		AddedByID: uID, // Self-added
+		UserID:    &userID,
+		AddedByID: userID, // Self-added
 		Type:      "direct",
 	}
 
@@ -347,6 +353,11 @@ func ConvertLeadToClient(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.AdvancePayment < 0 || input.TotalValue <= 0 || input.AdvancePayment > input.TotalValue {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid financial values"})
 		return
 	}
 
@@ -400,8 +411,9 @@ func ConvertLeadToClient(c *gin.Context) {
 				return err
 			}
 
-			// Adjust Balance
-			if err := AdjustBalance(tx, input.AdvancePayment, "income", "Lead Conversion: "+lead.ID.String(), "Project Advance: "+project.Name); err != nil {
+			// Adjust Balance safely
+			refKey := "lead_advance_" + lead.ID.String()
+			if err := SafeAdjustBalance(tx, input.AdvancePayment, "income", refKey, "Project Advance: "+project.Name); err != nil {
 				return err
 			}
 		}

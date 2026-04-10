@@ -10,6 +10,7 @@ import (
 	"github.com/pushp314/erp-crm/models"
 	"github.com/pushp314/erp-crm/utils"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func GetBalance(c *gin.Context) {
@@ -136,10 +137,25 @@ func UpdateBalanceManual(c *gin.Context) {
 	GetBalance(c)
 }
 
-// Utility function to be used by other handlers
-func AdjustBalance(tx *gorm.DB, amount float64, logType, reference, notes string) error {
+// SafeAdjustBalance ensures a financial transaction is conditionally executed exactly ONCE
+// and prevents Read/Write logical race conditions via Row-Level Locking.
+func SafeAdjustBalance(tx *gorm.DB, amount float64, logType, referenceID, notes string) error {
+	if amount == 0 {
+		return nil
+	}
+
+	// 1. Idempotency Check: Did we already process this exact reference ID?
+	var existingLog models.BalanceLog
+	err := tx.Where("reference = ?", referenceID).First(&existingLog).Error
+	if err == nil {
+		return nil // Transaction processed previously. Safe silent return.
+	} else if err != gorm.ErrRecordNotFound {
+		return err // Real database error
+	}
+
+	// 2. Pessimistic Locking (SELECT ... FOR UPDATE) to prevent concurrency overrides
 	var balance models.CompanyBalance
-	if err := tx.First(&balance).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&balance).Error; err != nil {
 		balance = models.CompanyBalance{TotalBalance: 0}
 		if err := tx.Create(&balance).Error; err != nil {
 			return err
@@ -154,7 +170,7 @@ func AdjustBalance(tx *gorm.DB, amount float64, logType, reference, notes string
 	log := models.BalanceLog{
 		Amount:    amount,
 		Type:      logType,
-		Reference: reference,
+		Reference: referenceID,
 		Notes:     notes,
 	}
 	return tx.Create(&log).Error
