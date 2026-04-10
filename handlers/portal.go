@@ -408,3 +408,49 @@ func PortalRequestChat(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Chat access request submitted to admin"})
 }
+// PortalUpdateSOW allows a client to propose/update the SOW from the portal
+func PortalUpdateSOW(c *gin.Context) {
+	token := c.Param("token")
+	var input struct {
+		SOW string `json:"sow" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "SOW content is required"})
+		return
+	}
+
+	var projectID uuid.UUID
+
+	// Verify token
+	var invoice models.Invoice
+	if err := database.DB.Select("project_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+		projectID = *invoice.ProjectID
+	} else {
+		var project models.Project
+		if err := database.DB.Select("id").First(&project, "client_portal_token = ?", token).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+		projectID = project.ID
+	}
+
+	// Update SOW and reset acceptance status for re-review
+	updates := map[string]any{
+		"sow":                     input.SOW,
+		"sow_accepted_by_client":  true,  // Auto-accept since client is proposing it
+		"sow_accepted_by_admin":   false, // Requires PM/Admin re-approval
+	}
+
+	if err := database.DB.Model(&models.Project{}).Where("id = ?", projectID).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update SOW"})
+		return
+	}
+
+	// Notify PM
+	var project models.Project
+	database.DB.First(&project, "id = ?", projectID)
+	CreateNotification(project.CreatedBy, "message", "New SOW Proposal", "The client proposed a new SOW for '"+project.Name+"'")
+
+	c.JSON(http.StatusOK, gin.H{"message": "SOW proposal submitted successfully"})
+}

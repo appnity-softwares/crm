@@ -384,12 +384,13 @@ export default function ProjectDetail() {
                             {hasElevated && <button className="btn btn-sm btn-secondary" onClick={() => setShowAssignModal(true)}><Plus size={12} /></button>}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {project?.assignments?.map(assign => (
+                            {/* Filter out duplicate assignments (same user) */}
+                            {Array.from(new Map(project?.assignments?.filter(a => !a.removed_at).map(a => [a.user?.id, a])).values()).map(assign => (
                                 <div key={assign.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem' }}>{assign.user?.name?.charAt(0) || '?'}</div>
                                         <div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{assign.user?.name}</div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{assign.user?.name || 'Unknown User'}</div>
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{assign.role}</div>
                                         </div>
                                     </div>

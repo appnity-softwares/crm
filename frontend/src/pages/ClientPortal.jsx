@@ -16,6 +16,11 @@ export default function ClientPortal() {
     const [showTicketModal, setShowTicketModal] = useState(false);
     const [ticketForm, setTicketForm] = useState({ subject: '', description: '', priority: 'medium' });
     const [savingTicket, setSavingTicket] = useState(false);
+
+    const [showSowModal, setShowSowModal] = useState(false);
+    const [sowForm, setSowForm] = useState({ sow: '' });
+    const [savingSOW, setSavingSOW] = useState(false);
+
     const [agreed, setAgreed] = useState(false);
 
     const load = async () => {
@@ -102,6 +107,18 @@ export default function ClientPortal() {
         } catch { toast("Failed to raise ticket", "error"); }
         finally { setSavingTicket(false); }
     };
+    
+    const handleUpdateSOW = async (e) => {
+        e.preventDefault();
+        setSavingSOW(true);
+        try {
+            await portalAPI.updateSOW(token, sowForm);
+            toast("SOW Proposal Submitted!", "success");
+            setShowSowModal(false);
+            load();
+        } catch { toast("Failed to update SOW", "error"); }
+        finally { setSavingSOW(false); }
+    };
 
     if (loading) return <div className="portal-loading"><div className="spinner" /></div>;
     if (!data) return (
@@ -138,7 +155,7 @@ export default function ClientPortal() {
                                 </div>
                                 <div className="stat-pill">
                                     <Users size={16} />
-                                    <span>{project.assignments?.length || 0} Experts Assigned</span>
+                                    <span>{Array.from(new Set(project.assignments?.filter(a => !a.removed_at).map(a => a.user_id))).length || 0} Experts Assigned</span>
                                 </div>
                             </div>
                         )}
@@ -229,7 +246,7 @@ export default function ClientPortal() {
                                         <h3 className="card-title"><FileText size={20} /> Agreement & SOW</h3>
                                     </div>
                                     <p className="sow-summary">{project.sow ? project.sow.substring(0, 100) + '...' : "Check your project agreement here."}</p>
-                                    <div className="sow-actions">
+                                    <div className="sow-actions" style={{ display: 'flex', gap: 10, marginTop: 15 }}>
                                         {project.sow_accepted_by_client ? (
                                             <div className="sow-status">
                                                 <CheckCircle size={16} className="text-green-500" />
@@ -243,6 +260,12 @@ export default function ClientPortal() {
                                                 }
                                             }}>Accept Terms</button>
                                         )}
+                                        <button className="btn btn-outline btn-sm" onClick={() => {
+                                            setSowForm({ sow: project.sow || '' });
+                                            setShowSowModal(true);
+                                        }}>
+                                            {project.sow ? 'Edit Proposal' : 'Propose SOW'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -408,6 +431,33 @@ export default function ClientPortal() {
                             <button type="button" className="btn btn-secondary" onClick={() => setShowTicketModal(false)} style={{ marginRight: 10 }}>Back</button>
                             <button type="submit" className="btn btn-indigo" disabled={savingTicket}>
                                 {savingTicket ? 'Submitting...' : 'Send Request'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {showSowModal && (
+                <Modal title="Propose Statement of Work" onClose={() => setShowSowModal(false)}>
+                    <form onSubmit={handleUpdateSOW} className="portal-form">
+                        <div className="form-group">
+                            <label>Scope of Work / Requirements</label>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 10 }}>
+                                Provide a detailed list of features, deadlines, and technical requirements you expect for this project.
+                            </p>
+                            <textarea 
+                                required 
+                                rows={10} 
+                                value={sowForm.sow} 
+                                onChange={e => setSowForm({sow: e.target.value})} 
+                                placeholder="E.g. 1. Authentication system, 2. Payment dashboard..." 
+                                style={{ fontSize: '0.9rem', lineHeight: '1.5' }}
+                            />
+                        </div>
+                        <div className="modal-footer" style={{ marginTop: 24 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowSowModal(false)} style={{ marginRight: 10 }}>Cancel</button>
+                            <button type="submit" className="btn btn-indigo" disabled={savingSOW}>
+                                {savingSOW ? 'Saving...' : 'Submit Proposal'}
                             </button>
                         </div>
                     </form>
