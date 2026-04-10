@@ -91,14 +91,73 @@ export default function TraineeDashboard() {
                     <div style={{ fontSize: '0.85rem', color: 'var(--green-600)', fontWeight: 600, marginTop: 4 }}>Based on recent</div>
                 </div>
                 <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, white, #f8fafc)', borderLeft: '4px solid var(--red-500)' }}>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Pending Balance</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>₹{(totalFee - paidAmount).toLocaleString()}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--red-600)', fontWeight: 600, marginTop: 4 }}>Due Record</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Training Batch</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{activeEnrollment.batch_name || 'N/A'}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--red-600)', fontWeight: 600, marginTop: 4 }}>Current Cohort</div>
                 </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                    {/* New Assignment Submission Section */}
+                    <div className="card" style={{ padding: 24, border: '2px dashed var(--primary-200)', background: 'var(--primary-50)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <Globe size={20} className="text-primary" />
+                                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Assignment & Project Submission</h3>
+                            </div>
+                            <span className="badge blue">Links Only</span>
+                        </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 20 }}>Share your GitHub repositories, hosted project links, or Google Drive zip links for review.</p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                            {(() => {
+                                try {
+                                    const links = JSON.parse(activeEnrollment.assignment_links || '[]');
+                                    return links.map((lnk, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'white', borderRadius: 12, border: '1px solid var(--border)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{lnk.title}</div>
+                                                <a href={lnk.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary-600)', textDecoration: 'none' }}>{lnk.link}</a>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span className={`badge ${lnk.status === 'approved' ? 'green' : 'gray'}`} style={{ fontSize: '0.65rem' }}>{lnk.status?.toUpperCase() || 'PENDING'}</span>
+                                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 4 }}>{new Date(lnk.submitted_at).toLocaleDateString()}</div>
+                                            </div>
+                                        </div>
+                                    ));
+                                } catch { return null; }
+                            })()}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <input 
+                                className="form-control" 
+                                placeholder="Assignment Title" 
+                                id="ass-title"
+                                style={{ flex: 1 }}
+                            />
+                            <input 
+                                className="form-control" 
+                                placeholder="Link (GitHub/Drive)" 
+                                id="ass-link"
+                                style={{ flex: 2 }}
+                            />
+                            <button className="btn btn-primary" onClick={async () => {
+                                const title = document.getElementById('ass-title').value;
+                                const link = document.getElementById('ass-link').value;
+                                if (!title || !link) return toast("Enter both", "warning");
+                                try {
+                                    const currentLinks = JSON.parse(activeEnrollment.assignment_links || '[]');
+                                    const nextLinks = [...currentLinks, { title, link, submitted_at: new Date(), status: 'pending' }];
+                                    await trainingAPI.updateEnrollment(activeEnrollment.id, { assignment_links: JSON.stringify(nextLinks) });
+                                    toast("Submitted", "success");
+                                    loadData();
+                                } catch { toast("Failed", "error"); }
+                            }}>Submit</button>
+                        </div>
+                    </div>
+
                     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                         <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -155,6 +214,26 @@ export default function TraineeDashboard() {
                                                 return <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No records yet.</div>;
                                             }
                                         })()}
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: 40 }}>
+                                    <h4 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}><CheckCircle size={18} /> Certification Hub</h4>
+                                    <div style={{ padding: 24, background: 'var(--bg-app)', borderRadius: 12, textAlign: 'center' }}>
+                                        <Award size={48} style={{ color: activeEnrollment.status === 'completed' ? 'var(--primary-600)' : 'var(--text-muted)', marginBottom: 16 }} />
+                                        {activeEnrollment.cert_link ? (
+                                            <>
+                                                <h5 style={{ margin: '0 0 8px 0' }}>Professional Certificate Issued</h5>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>Your curriculum completion certificate is ready for download.</p>
+                                                <a href={activeEnrollment.cert_link} target="_blank" rel="noopener noreferrer" className="btn btn-primary w-full">Download Certificate</a>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h5 style={{ margin: '0 0 8px 0', color: 'var(--text-muted)' }}>Certificate Pending</h5>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Complete all modules and clear pending dues to unlock your certificate.</p>
+                                                <button className="btn btn-secondary w-full" disabled>Not Available</button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

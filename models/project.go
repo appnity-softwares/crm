@@ -86,3 +86,18 @@ func (pt *ProjectTransfer) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type ProjectResource struct {
+	ID        uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	ProjectID uuid.UUID      `gorm:"type:uuid;not null;index" json:"project_id"`
+	Title     string         `gorm:"size:255;not null" json:"title"`
+	Link      string         `gorm:"size:1000;not null" json:"link"`
+	Type      string         `gorm:"size:50;default:'other'" json:"type"` // design, code, doc, other
+	CreatedAt time.Time      `json:"created_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (pr *ProjectResource) BeforeCreate(tx *gorm.DB) error {
+	pr.ID = uuid.New()
+	return nil
+}

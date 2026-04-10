@@ -63,6 +63,10 @@ func GetDashboardStats(c *gin.Context) {
 		database.DB.Order("date desc").Limit(5).Find(&recentIncome)
 	}
 
+	// Activity Feed - New Feature
+	var activityFeed []models.ActivityLog
+	database.DB.Preload("User").Order("created_at desc").Limit(10).Find(&activityFeed)
+
 	// Attendance trend (Last 7 days)
 	var attTrend []struct {
 		Date  string
@@ -88,6 +92,7 @@ func GetDashboardStats(c *gin.Context) {
 		"late_today":       lateToday,
 		"project_status":   projectStatus,
 		"attendance_trend": attTrend,
+		"activity_feed":    activityFeed,
 	}
 
 	if role == "admin" || role == "manager" {

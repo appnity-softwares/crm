@@ -499,8 +499,14 @@ func ApproveProjectUpdate(c *gin.Context) {
 			// Automated Invoicing
 			if oldProgress < 50 && project.Progress >= 50 && project.TotalValue > 0 {
 				GenerateMilestoneInvoice(tx, project, 50)
+				if project.ClientID != nil {
+					CreateNotification(*project.ClientID, "info", "50% Milestone Reached!", "Your project has reached the 50% milestone. An invoice has been generated.")
+				}
 			} else if oldProgress < 100 && project.Progress == 100 && project.TotalValue > 0 {
 				GenerateMilestoneInvoice(tx, project, 100)
+				if project.ClientID != nil {
+					CreateNotification(*project.ClientID, "success", "100% Project Completed!", "Congratulations! Your project is now complete.")
+				}
 			}
 		}
 		project.PendingProgress = nil

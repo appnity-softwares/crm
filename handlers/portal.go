@@ -25,30 +25,67 @@ func GetPortalData(c *gin.Context) {
 	var invoice models.Invoice
 	err := database.DB.Preload("Project").First(&invoice, "secure_token = ?", token).Error
 	if err == nil {
-		// Found invoice, return it and optionally its project
+		// Found invoice, fetch its parent project data if available
+		var project models.Project
+		var invoices []models.Invoice
+		var updates []models.ProjectUpdate
+		var tasks []models.Task
+		var resources []models.ProjectResource
+
+		if invoice.ProjectID != nil {
+			database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "id = ?", invoice.ProjectID)
+			database.DB.Where("project_id = ?", project.ID).Find(&invoices)
+			database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
+			database.DB.Where("project_id = ?", project.ID).Find(&tasks)
+			database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&resources)
+		}
+
 		c.JSON(http.StatusOK, gin.H{
-			"type":    "invoice",
-			"invoice": invoice,
+			"type":      "invoice",
+			"invoice":   invoice,
+			"project":   project,
+			"invoices":  invoices,
+			"updates":   updates,
+			"tasks":     tasks,
+			"resources": resources,
 		})
 		return
 	}
 
 	// Check if token belongs to a project
 	var project models.Project
-	err = database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "client_portal_token = ?", token).Error
+	query := database.DB.Preload("Assignments.User").Preload("Creator")
+	
+	// Check by portal token first
+	err = query.First(&project, "client_portal_token = ?", token).Error
+	if err != nil {
+		// Fallback: Check if it's a valid UUID and match by project ID
+		if _, uuidErr := uuid.Parse(token); uuidErr == nil {
+			err = query.First(&project, "id = ?", token).Error
+		}
+	}
+
 	if err == nil {
-		// Found project, fetch its invoices, updates and comments
+		// Found project, fetch its invoices, updates, tasks and resources
 		var invoices []models.Invoice
 		database.DB.Where("project_id = ?", project.ID).Find(&invoices)
 
 		var updates []models.ProjectUpdate
 		database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
 
+		var tasks []models.Task
+		database.DB.Where("project_id = ?", project.ID).Find(&tasks)
+
+		var resources []models.ProjectResource
+		database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&resources)
+
 		c.JSON(http.StatusOK, gin.H{
-			"type":     "project",
-			"project":  project,
-			"invoices": invoices,
-			"updates":  updates,
+			"type":      "project",
+			"project":   project,
+			"invoices":  invoices,
+			"updates":   updates,
+			"tasks":     tasks,
+			"resources": resources,
 		})
 		return
 	}
@@ -256,7 +293,18 @@ func VerifyPayment(c *gin.Context) {
 
 		// Adjust company balance safely
 		refKey := "razorpay_" + input.RazorpayPaymentID
-		return SafeAdjustBalance(tx, invoice.Total, "income", refKey, "Razorpay Payment from Portal")
+		err := SafeAdjustBalance(tx, invoice.Total, "income", refKey, "Razorpay Payment from Portal")
+		if err != nil {
+			return err
+		}
+
+		// Log activity for dashboard feed
+		var clientID uuid.UUID
+		if invoice.ClientID != nil {
+			clientID = *invoice.ClientID
+		}
+		models.LogActivity(tx, clientID, "payment", "Payment Received", fmt.Sprintf("₹%v received for Invoice %s", invoice.Total, invoice.InvoiceNumber))
+		return nil
 	})
 
 	if err != nil {

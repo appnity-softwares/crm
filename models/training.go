@@ -41,6 +41,8 @@ type Enrollment struct {
 	CertLink         string         `gorm:"size:1000" json:"cert_link"`
 	OfferLink        string         `gorm:"size:1000" json:"offer_link"`
 	Resources        string         `gorm:"type:text" json:"resources"` // Links specific to this student
+	AssignmentLinks  string         `gorm:"type:text" json:"assignment_links"` // JSON string of links: [{title, link, submitted_at, status}]
+	BatchName        string         `gorm:"size:100;index" json:"batch_name"`
 	TotalFee         float64        `json:"total_fee"`
 	PaidAmount       float64        `gorm:"default:0" json:"paid_amount"`
 	Installments     string         `gorm:"type:text" json:"installments"` // JSON array of payment objects: [{id, date, amount, status, note}]

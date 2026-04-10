@@ -137,6 +137,67 @@ export default function ClientPortal() {
                                 </div>
                             </div>
 
+                            {/* New Kanban Board */}
+                            <div className="card" style={{ marginBottom: 30 }}>
+                                <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Layout size={20} className="text-primary" />
+                                    Internal Project Kanban (Read-Only)
+                                </h3>
+                                <div className="kanban-mini" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15 }}>
+                                    {[
+                                        { id: 'todo', title: 'To Do', color: 'gray' },
+                                        { id: 'doing', title: 'Doing', color: 'blue' },
+                                        { id: 'done', title: 'Done', color: 'green' }
+                                    ].map(col => (
+                                        <div key={col.id} style={{ background: 'var(--bg-body)', borderRadius: 12, padding: 12 }}>
+                                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>{col.title}</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                {(data.tasks || []).filter(t => t.status === col.id).map(task => (
+                                                    <div key={task.id} style={{ background: 'white', padding: '10px 12px', borderRadius: 8, fontSize: '0.8rem', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{task.title}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Priority: {task.priority}</div>
+                                                    </div>
+                                                ))}
+                                                {(data.tasks || []).filter(t => t.status === col.id).length === 0 && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', py: 2 }}>—</div>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* New Deliverables Vault */}
+                            <div className="card" style={{ marginBottom: 30 }}>
+                                <h3 style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <CreditCard size={20} className="text-primary" />
+                                    Deliverables & Asset Vault
+                                </h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>Quick access to your finalized designs, source code repositories, and documentation.</p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                                    {(data.resources || []).length > 0 ? data.resources.map(res => (
+                                        <a key={res.id} href={res.link} target="_blank" rel="noopener noreferrer" style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 12, 
+                                            padding: 16, 
+                                            background: 'white', 
+                                            border: '1px solid var(--border)', 
+                                            borderRadius: 12,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            transition: 'transform 0.2s',
+                                        }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                                            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-50)', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {res.type === 'design' ? <Layout size={20} /> : <ExternalLink size={20} />}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{res.title}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{res.type?.toUpperCase()} Deliverable</div>
+                                            </div>
+                                        </a>
+                                    )) : <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: 20, background: 'var(--bg-hover)', borderRadius: 12, color: 'var(--text-muted)' }}>No deliverables linked yet.</div>}
+                                </div>
+                            </div>
+
                             <div className="card" style={{ marginBottom: 30, border: '1px solid var(--amber-200)', background: 'var(--amber-50)' }}>
                                 <h3 style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <FileText size={20} style={{ color: 'var(--amber-600)' }} />

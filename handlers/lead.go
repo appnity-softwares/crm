@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -426,7 +427,8 @@ func ConvertLeadToClient(c *gin.Context) {
 		return
 	}
 
-	utils.LogActivity(c, "lead", "convert", id.String(), input)
+	// Log activity for dashboard feed
+	models.LogActivity(database.DB, lead.ID, "lead_update", "Lead Converted", fmt.Sprintf("%s was promoted to Client", lead.Name))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Lead converted to client successfully! Project created.",

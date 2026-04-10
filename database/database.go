@@ -61,6 +61,9 @@ func Connect() {
 		&models.ProjectComment{},
 		&models.Course{}, &models.Enrollment{},
 		&models.AuditLog{},
+		&models.ActivityLog{},
+		&models.ProjectResource{},
+		&models.Subscription{},
 	)
 	if err != nil {
 		log.Fatal("❌ Failed to auto-migrate:", err)

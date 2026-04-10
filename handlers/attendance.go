@@ -132,6 +132,11 @@ func QRCheckIn(c *gin.Context) {
 		CreateNotification(uid, "warning", "Late Check-in Recorded", fmt.Sprintf("You checked in late today at %s. Please try to be on time.", now.Format("15:04")))
 	}
 
+	// Log activity for dashboard feed
+	var user models.User
+	database.DB.First(&user, "id = ?", uid)
+	models.LogActivity(database.DB, uid, "checkin", "Check-in Successful", fmt.Sprintf("%s clocked in at %s", user.Name, now.Format("15:04")))
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message":    "QR Checked in successfully",
 		"attendance": attendance,

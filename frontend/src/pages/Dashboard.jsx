@@ -184,29 +184,26 @@ export default function Dashboard() {
 
             <div className="dashboard-grid-2-1" style={{ display: 'grid', gridTemplateColumns: isAdmin ? 'minmax(0, 1fr) 350px' : '1fr', gap: 24, marginBottom: 30 }}>
                 {isAdmin && (
-                    <div className="card revenue-card" style={{ marginBottom: 0 }}>
+                    <div className="card" style={{ marginBottom: 0 }}>
                         <div className="card-header">
-                            <h3><IndianRupee size={16} /> Revenue Growth Trend</h3>
+                            <h3><Activity size={18} /> Company Activity Feed</h3>
                         </div>
-                        <div className="card-body">
-                            <div style={{ width: '100%', height: 320, minHeight: 320, minWidth: 200 }}>
-                                <ResponsiveContainer width="100%" height={320} minWidth={200} minHeight={320}>
-                                    <AreaChart data={revenueData}>
-                                        <defs>
-                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                        <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                                        <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => '₹' + v} />
-                                        <Tooltip
-                                            contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }}
-                                        />
-                                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                        <div className="card-body" style={{ maxHeight: 400, overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {statsData?.activity_feed?.length > 0 ? statsData.activity_feed.map(log => (
+                                    <div key={log.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                                        <div className="avatar sm" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}>
+                                            {log.user?.name?.charAt(0) || 'S'}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{log.action}</span>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{log.details}</p>
+                                        </div>
+                                    </div>
+                                )) : <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>No recent activity.</div>}
                             </div>
                         </div>
                     </div>
@@ -221,28 +218,26 @@ export default function Dashboard() {
                             </button>
                         )}
                     </div>
-                    <div className="card-body" style={{ maxHeight: 400, overflowY: 'auto', padding: '10px 0' }}>
+                    <div className="card-body" style={{ maxHeight: 200, overflowY: 'auto', padding: '10px 0' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {noticeData?.notices?.length > 0 ? noticeData.notices.map(notice => (
-                                <div key={notice.id} style={{ padding: '12px 16px', borderRadius: 12, background: 'var(--bg-hover)', position: 'relative' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                        <span className={`badge ${notice.type === 'holiday' ? 'amber' : notice.type === 'win' ? 'green' : 'blue'}`} style={{ fontSize: '0.65rem' }}>{notice.type.toUpperCase()}</span>
-                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(notice.created_at).toLocaleDateString()}</span>
+                                <div key={notice.id} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--bg-hover)', position: 'relative' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                        <span className={`badge ${notice.type === 'holiday' ? 'amber' : notice.type === 'win' ? 'green' : 'blue'}`} style={{ fontSize: '0.6rem' }}>{notice.type.toUpperCase()}</span>
+                                        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{new Date(notice.created_at).toLocaleDateString()}</span>
                                     </div>
-                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem' }}>{notice.title}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{notice.content}</p>
+                                    <h4 style={{ margin: '0 0 2px 0', fontSize: '0.85rem' }}>{notice.title}</h4>
                                     {hasElevated && (
                                         <button
                                             onClick={() => handleDeleteNotice(notice.id)}
-                                            style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'var(--red-400)', cursor: 'pointer', padding: 4, visibility: 'hidden' }}
-                                            className="hover-visible"
+                                            style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: 'var(--red-400)', cursor: 'pointer', padding: 2 }}
                                         >
-                                            <Trash2 size={12} />
+                                            <Trash2 size={10} />
                                         </button>
                                     )}
                                 </div>
                             )) : (
-                                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No active notices.</div>
+                                <div style={{ textAlign: 'center', padding: 10, color: 'var(--text-muted)', fontSize: '0.8rem' }}>No active notices.</div>
                             )}
                         </div>
                     </div>
