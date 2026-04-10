@@ -130,6 +130,14 @@ func GetProjects(c *gin.Context) {
 		return
 	}
 
+	// Backfill missing portal tokens for older records
+	for i := range projects {
+		if projects[i].PortalToken == "" {
+			projects[i].PortalToken = uuid.New().String()
+			database.DB.Model(&projects[i]).Update("client_portal_token", projects[i].PortalToken)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"count":    len(projects),
 		"projects": projects,
@@ -155,6 +163,12 @@ func GetProject(c *gin.Context) {
 		First(&project, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
 		return
+	}
+
+	// Backfill missing portal token
+	if project.PortalToken == "" {
+		project.PortalToken = uuid.New().String()
+		database.DB.Model(&project).Update("client_portal_token", project.PortalToken)
 	}
 
 	userRole, _ := c.Get("user_role")

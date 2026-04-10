@@ -19,6 +19,11 @@ export function NotificationProvider({ children }) {
     // ── FCM Setup: Initialize Firebase & register device token ──
     useEffect(() => {
         if (!user || fcmInitialized.current) return;
+        
+        // Skip FCM for external/student roles to reduce noise and potential auth errors
+        const isStaff = ['admin', 'manager', 'employee'].includes(user.role);
+        if (!isStaff) return;
+
         if (!VAPID_KEY) {
             console.info('ℹ️ VITE_FIREBASE_VAPID_KEY not set — push notifications disabled');
             return;
