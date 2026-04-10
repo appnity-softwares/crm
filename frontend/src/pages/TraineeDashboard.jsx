@@ -67,9 +67,22 @@ export default function TraineeDashboard() {
                         <Link to="/chat" className="btn" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', padding: '12px 20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <MessageSquare size={18} /> Company Chat
                         </Link>
-                        <button className="btn btn-primary" style={{ padding: '12px 24px', fontWeight: 700 }}>
-                            <Award size={18} style={{ marginRight: 8 }} /> Certification
-                        </button>
+                         <button className="btn btn-primary" style={{ padding: '12px 24px', fontWeight: 700 }} onClick={async () => {
+                             try {
+                                 await chatPermissionAPI.request({ 
+                                     user_id: activeEnrollment.course.created_by || activeEnrollment.created_by,
+                                     project_id: activeEnrollment.id // Enrollment acts as project context for trainee
+                                 });
+                                 toast("Chat request sent to mentor!", "success");
+                             } catch {
+                                 toast("Request failed", "error");
+                             }
+                         }}>
+                             <MessageSquare size={18} style={{ marginRight: 8 }} /> Talk to Mentor
+                         </button>
+                         <button className="btn btn-primary" style={{ padding: '12px 24px', fontWeight: 700 }}>
+                             <Award size={18} style={{ marginRight: 8 }} /> Certification
+                         </button>
                     </div>
                 </div>
             </div>

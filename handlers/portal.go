@@ -21,10 +21,9 @@ import (
 func GetPortalData(c *gin.Context) {
 	token := c.Param("token")
 
-	// Check if token belongs to an invoice
+	// 1. Try Lookup by Invoice Token
 	var invoice models.Invoice
-	err := database.DB.Preload("Project").First(&invoice, "secure_token = ?", token).Error
-	if err == nil {
+	if err := database.DB.Preload("Project").First(&invoice, "secure_token = ?", token).Error; err == nil {
 		// Found invoice, fetch its parent project data if available
 		var project models.Project
 		var invoices []models.Invoice
@@ -34,9 +33,9 @@ func GetPortalData(c *gin.Context) {
 
 		if invoice.ProjectID != nil {
 			database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "id = ?", invoice.ProjectID)
-			database.DB.Where("project_id = ?", project.ID).Find(&invoices)
+			database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&invoices)
 			database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
-			database.DB.Where("project_id = ?", project.ID).Find(&tasks)
+			database.DB.Where("project_id = ?", project.ID).Order("created_at ASC").Find(&tasks)
 			database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&resources)
 		}
 
@@ -52,45 +51,46 @@ func GetPortalData(c *gin.Context) {
 		return
 	}
 
-	// Check if token belongs to a project
+	// 2. Try Lookup by Project Portal Token
 	var project models.Project
-	query := database.DB.Preload("Assignments.User").Preload("Creator")
-	
-	// Check by portal token first
-	err = query.First(&project, "client_portal_token = ?", token).Error
-	if err != nil {
-		// Fallback: Check if it's a valid UUID and match by project ID
-		if _, uuidErr := uuid.Parse(token); uuidErr == nil {
-			err = query.First(&project, "id = ?", token).Error
-		}
-	}
-
-	if err == nil {
-		// Found project, fetch its invoices, updates, tasks and resources
-		var invoices []models.Invoice
-		database.DB.Where("project_id = ?", project.ID).Find(&invoices)
-
-		var updates []models.ProjectUpdate
-		database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
-
-		var tasks []models.Task
-		database.DB.Where("project_id = ?", project.ID).Find(&tasks)
-
-		var resources []models.ProjectResource
-		database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&resources)
-
-		c.JSON(http.StatusOK, gin.H{
-			"type":      "project",
-			"project":   project,
-			"invoices":  invoices,
-			"updates":   updates,
-			"tasks":     tasks,
-			"resources": resources,
-		})
+	if err := database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "client_portal_token = ?", token).Error; err == nil {
+		returnProjectPortalData(c, project)
 		return
 	}
 
-	c.JSON(http.StatusNotFound, gin.H{"error": "Portal link is invalid or expired"})
+	// 3. Fallback: Try Lookup by Project UUID (if token is a valid UUID)
+	if _, uuidErr := uuid.Parse(token); uuidErr == nil {
+		if err := database.DB.Preload("Assignments.User").Preload("Creator").First(&project, "id = ?", token).Error; err == nil {
+			returnProjectPortalData(c, project)
+			return
+		}
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "Portal link is invalid or has expired"})
+}
+
+// Helper to return consistent project portal data
+func returnProjectPortalData(c *gin.Context, project models.Project) {
+	var invoices []models.Invoice
+	database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&invoices)
+
+	var updates []models.ProjectUpdate
+	database.DB.Preload("Comments.User").Preload("Author").Where("project_id = ?", project.ID).Order("created_at DESC").Find(&updates)
+
+	var tasks []models.Task
+	database.DB.Where("project_id = ?", project.ID).Order("created_at ASC").Find(&tasks)
+
+	var resources []models.ProjectResource
+	database.DB.Where("project_id = ?", project.ID).Order("created_at DESC").Find(&resources)
+
+	c.JSON(http.StatusOK, gin.H{
+		"type":      "project",
+		"project":   project,
+		"invoices":  invoices,
+		"updates":   updates,
+		"tasks":     tasks,
+		"resources": resources,
+	})
 }
 
 // PortalPostComment allows a client to comment on an update from the portal
@@ -359,4 +359,52 @@ func PortalAcceptSOW(c *gin.Context) {
 	CreateNotification(project.CreatedBy, "message", "SOW Accepted", "The client accepted the SOW for '"+project.Name+"'")
 
 	c.JSON(http.StatusOK, gin.H{"message": "SOW accepted successfully"})
+}
+
+// PortalRequestChat allows a client to request chat permission via portal token
+func PortalRequestChat(c *gin.Context) {
+	token := c.Param("token")
+	var req struct {
+		UserID uuid.UUID `json:"user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Target user ID is required"})
+		return
+	}
+
+	// Resolve Project and Client from token
+	var project models.Project
+	if err := database.DB.Select("id", "client_id", "created_by").First(&project, "client_portal_token = ?", token).Error; err != nil {
+		// Try invoice token fallback
+		var invoice models.Invoice
+		if err := database.DB.Select("project_id", "client_id").First(&invoice, "secure_token = ?", token).Error; err == nil && invoice.ProjectID != nil {
+			database.DB.Select("id", "client_id", "created_by").First(&project, "id = ?", invoice.ProjectID)
+		} else {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid portal link"})
+			return
+		}
+	}
+
+	if project.ClientID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No client associated with this project"})
+		return
+	}
+
+	// Create ChatPermission
+	permission := models.ChatPermission{
+		ClientID:  *project.ClientID,
+		UserID:    req.UserID,
+		ProjectID: project.ID,
+		Status:    "requested",
+	}
+
+	if err := database.DB.Create(&permission).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit request"})
+		return
+	}
+
+	// Notify PM/Admin
+	CreateNotification(project.CreatedBy, "message", "Chat Access Request", "The client requested chat access for project '"+project.Name+"'")
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Chat access request submitted to admin"})
 }

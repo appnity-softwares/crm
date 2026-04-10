@@ -181,7 +181,7 @@ export default function ProjectDetail() {
                     </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isAdmin ? 4 : 3}, 1fr)`, padding: '20px 32px', background: 'var(--bg-app)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isAdmin ? 5 : 4}, 1fr)`, padding: '20px 32px', background: 'var(--bg-app)' }}>
                     <div style={{ borderRight: '1px solid var(--border)' }}>
                         <label style={heroLabelStyle}>Progress</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
@@ -201,15 +201,19 @@ export default function ProjectDetail() {
                             <div style={{ fontWeight: 600, marginTop: 4, color: 'var(--primary-600)' }}>₹{project?.total_value?.toLocaleString() || '0'}</div>
                         </div>
                     )}
+                    <div style={{ borderRight: '1px solid var(--border)', paddingLeft: 32 }}>
+                         <label style={heroLabelStyle}>Client</label>
+                         <div style={{ fontWeight: 600, marginTop: 4 }}>{project?.client?.name || 'Self-Managed'}</div>
+                    </div>
                     <div style={{ paddingLeft: 32 }}>
                         <label style={heroLabelStyle}>Active Team</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: -8, marginTop: 4 }}>
-                            {project?.assignments?.slice(0, 5).map((a, i) => (
+                            {project?.assignments?.filter(a => !a.removed_at).slice(0, 5).map((a, i) => (
                                 <div key={i} title={a.user?.name} style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, marginLeft: i === 0 ? 0 : -10 }}>
                                     {a.user?.name?.charAt(0) || '?'}
                                 </div>
                             ))}
-                            {project?.assignments?.length > 5 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 8 }}>+{project.assignments.length - 5}</span>}
+                            {project?.assignments?.filter(a => !a.removed_at).length > 5 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 8 }}>+{project.assignments.filter(a => !a.removed_at).length - 5}</span>}
                         </div>
                     </div>
                 </div>
@@ -348,6 +352,32 @@ export default function ProjectDetail() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {hasElevated && (
+                        <div className="card" style={{ padding: 24, background: 'var(--primary-50)', border: '1px solid var(--primary-200)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                <ExternalLink size={16} className="text-primary" />
+                                <h3 style={{ fontSize: '0.95rem', margin: 0 }}>Client Portal</h3>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Share this secure link with the client to let them track progress and pay invoices.</p>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button className="btn btn-primary btn-sm flex-1" onClick={() => {
+                                    const token = project.client_portal_token || project.id;
+                                    const link = `${window.location.origin}/portal/${token}`;
+                                    navigator.clipboard.writeText(link);
+                                    toast('Portal link copied to clipboard!', 'success');
+                                }}>
+                                    Copy Secure Link
+                                </button>
+                                <button className="btn btn-secondary btn-sm" onClick={() => {
+                                    const token = project.client_portal_token || project.id;
+                                    window.open(`/portal/${token}`, '_blank');
+                                }}>
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="card" style={{ padding: 24 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <h3 style={{ fontSize: '0.95rem' }}>Team Members</h3>

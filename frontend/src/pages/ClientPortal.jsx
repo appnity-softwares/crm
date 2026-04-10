@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { portalAPI } from '../services/api';
 import { useToast } from '../components/ui/Toast';
-import { CheckCircle, Clock, ExternalLink, CreditCard, Layout, FileText, ArrowRight, LifeBuoy, Activity } from 'lucide-react';
+import { CheckCircle, Clock, ExternalLink, CreditCard, Layout, FileText, ArrowRight, LifeBuoy, Activity, MessageSquare, FolderKanban, Users, TrendingUp, ShieldCheck, Heart, Share2 } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import GlobalHelpButton from '../components/ui/GlobalHelpButton';
 
@@ -33,9 +33,23 @@ export default function ClientPortal() {
 
     useEffect(() => {
         load();
+        // Load Razorpay Script
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        document.body.appendChild(script);
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        }
     }, [token]);
 
     const handlePayment = async () => {
+        if (!window.Razorpay) {
+            toast("Razorpay SDK not loaded", "error");
+            return;
+        }
         setProcessing(true);
         try {
             const res = await portalAPI.initializePayment(token);
@@ -43,8 +57,8 @@ export default function ClientPortal() {
                 key: res.data.key,
                 amount: res.data.amount,
                 currency: "INR",
-                name: "Appnity Softwares Private Limited",
-                description: "Invoice Payment",
+                name: "Appnity Softwares",
+                description: "Project/Invoice Payment",
                 order_id: res.data.order_id,
                 handler: async function (response) {
                     try {
@@ -53,15 +67,17 @@ export default function ClientPortal() {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_signature: response.razorpay_signature
                         });
-                        toast("Payment Successful!", "success");
-                        // Refresh data
-                        const refresh = await portalAPI.getData(token);
-                        setData(refresh.data);
+                        toast("Payment Verified!", "success");
+                        load();
                     } catch (err) {
                         toast("Payment verification failed", "error");
                     }
                 },
-                theme: { color: "#2563eb" }
+                prefill: {
+                    name: data.type === 'invoice' ? data.invoice.client_name : '',
+                    email: data.type === 'invoice' ? data.invoice.client_email : ''
+                },
+                theme: { color: "#4f46e5" }
             };
             const rzp = new window.Razorpay(options);
             rzp.open();
@@ -71,6 +87,7 @@ export default function ClientPortal() {
             setProcessing(false);
         }
     };
+
     const handleRaiseTicket = async (e) => {
         e.preventDefault();
         setSavingTicket(true);
@@ -86,238 +103,194 @@ export default function ClientPortal() {
         finally { setSavingTicket(false); }
     };
 
-    if (loading) return <div className="spinner" />;
+    if (loading) return <div className="portal-loading"><div className="spinner" /></div>;
     if (!data) return (
-        <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-            <h1>Access Denied</h1>
-            <p>This portal link is invalid or has expired.</p>
+        <div className="portal-error">
+            <ShieldCheck size={64} className="text-red-500" />
+            <h1>Access Restricted</h1>
+            <p>This secure portal link has expired or is invalid. Please contact support.</p>
         </div>
     );
 
     const invoice = data.type === 'invoice' ? data.invoice : null;
     const project = data.type === 'project' ? data.project : (invoice?.project);
-    const invoices = data.type === 'project' ? data.invoices : [invoice];
+    const invoices = (data.invoices || []).sort((a, b) => b.created_at.localeCompare(a.created_at));
 
     return (
-        <div className="portal-container" style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 20px' }}>
-            <div className="portal-header" style={{ marginBottom: 40, textAlign: 'center' }}>
-                <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 12 }}>Appnity Softwares - Client Portal</h1>
-                <p style={{ color: 'var(--text-muted)' }}>Welcome! Track your project progress and manage invoices securely.</p>
+        <div className="portal-page">
+            {/* Rich Global Header */}
+            <div className="portal-hero">
+                <div className="portal-container">
+                    <div className="hero-content">
+                        <div className="brand-badge">Appnity Client Portal</div>
+                        <h1>{project ? project.name : 'Welcome to Your Portal'}</h1>
+                        <p>{project?.description || 'Track your invoices, project progress, and communicate with the team.'}</p>
+                        
+                        {project && (
+                            <div className="hero-stats">
+                                <div className="stat-pill">
+                                    <Activity size={16} />
+                                    <span>{project.status?.replace('_', ' ')}</span>
+                                </div>
+                                <div className="stat-pill primary">
+                                    <TrendingUp size={16} />
+                                    <span>{project.progress || 0}% Complete</span>
+                                </div>
+                                <div className="stat-pill">
+                                    <Users size={16} />
+                                    <span>{project.assignments?.length || 0} Experts Assigned</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <div className="portal-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 30 }}>
-                <div className="portal-main">
+            <div className="portal-container portal-content-grid">
+                <main className="portal-main">
                     {project && (
                         <>
-                            <div className="card" style={{ marginBottom: 30 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                    <div>
-                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <Layout size={20} className="text-primary" />
-                                            Project: {project.name}
-                                        </h3>
-                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{project.description}</p>
-                                    </div>
-                                    <div className="badge blue">{project.status}</div>
+                            {/* Milestone Tracker */}
+                            <div className="card glass-card milestone-card">
+                                <div className="card-header">
+                                    <h3 className="card-title">
+                                        <TrendingUp size={20} className="icon-blue" />
+                                        Project Journey
+                                    </h3>
                                 </div>
-
-                                <div className="progress-section">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                                        <span style={{ fontWeight: 600 }}>Development Progress</span>
-                                        <span style={{ fontWeight: 800, color: 'var(--primary-600)' }}>{project.progress || 0}%</span>
+                                <div className="milestone-track">
+                                    <div className={`milestone-node ${project.progress >= 25 ? 'active' : ''}`}>
+                                        <div className="node-icon"><Clock size={14} /></div>
+                                        <span>Planning</span>
                                     </div>
-                                    <div style={{ height: 12, background: 'var(--bg-hover)', borderRadius: 10, overflow: 'hidden' }}>
-                                        <div style={{
-                                            height: '100%',
-                                            width: `${project.progress || 0}%`,
-                                            background: 'linear-gradient(90deg, var(--primary-500), var(--primary-600))',
-                                            transition: 'width 1s ease-out'
-                                        }} />
+                                    <div className="milestone-line" />
+                                    <div className={`milestone-node ${project.progress >= 50 ? 'active' : ''}`}>
+                                        <div className="node-icon"><Layout size={14} /></div>
+                                        <span>Alpha Build</span>
+                                    </div>
+                                    <div className="milestone-line" />
+                                    <div className={`milestone-node ${project.progress >= 75 ? 'active' : ''}`}>
+                                        <div className="node-icon"><ShieldCheck size={14} /></div>
+                                        <span>Beta Testing</span>
+                                    </div>
+                                    <div className="milestone-line" />
+                                    <div className={`milestone-node ${project.progress >= 100 ? 'active' : ''}`}>
+                                        <div className="node-icon"><CheckCircle size={14} /></div>
+                                        <span>Launch</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* New Kanban Board */}
-                            <div className="card" style={{ marginBottom: 30 }}>
-                                <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <Layout size={20} className="text-primary" />
-                                    Internal Project Kanban (Read-Only)
-                                </h3>
-                                <div className="kanban-mini" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 15 }}>
-                                    {[
-                                        { id: 'todo', title: 'To Do', color: 'gray' },
-                                        { id: 'doing', title: 'Doing', color: 'blue' },
-                                        { id: 'done', title: 'Done', color: 'green' }
-                                    ].map(col => (
-                                        <div key={col.id} style={{ background: 'var(--bg-body)', borderRadius: 12, padding: 12 }}>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>{col.title}</div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                {(data.tasks || []).filter(t => t.status === col.id).map(task => (
-                                                    <div key={task.id} style={{ background: 'white', padding: '10px 12px', borderRadius: 8, fontSize: '0.8rem', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{task.title}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Priority: {task.priority}</div>
+                            {/* Kanban Board View */}
+                            <div className="card glass-card">
+                                <div className="card-header">
+                                    <h3 className="card-title">
+                                        <FolderKanban size={20} className="icon-blue" />
+                                        Task Board (Read-only)
+                                    </h3>
+                                    <span className="badge-outline">Live Progress</span>
+                                </div>
+                                <div className="mini-kanban">
+                                    {['todo', 'doing', 'done'].map(status => (
+                                        <div key={status} className="kanban-col">
+                                            <div className="col-label">{status.toUpperCase()}</div>
+                                            <div className="col-tasks">
+                                                {(data.tasks || []).filter(t => t.status === status).slice(0, 3).map(task => (
+                                                    <div key={task.id} className="task-mini-card">
+                                                        {task.title}
                                                     </div>
                                                 ))}
-                                                {(data.tasks || []).filter(t => t.status === col.id).length === 0 && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', py: 2 }}>—</div>}
+                                                {(data.tasks || []).filter(t => t.status === status).length === 0 && <div className="task-empty">—</div>}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* New Deliverables Vault */}
-                            <div className="card" style={{ marginBottom: 30 }}>
-                                <h3 style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <CreditCard size={20} className="text-primary" />
-                                    Deliverables & Asset Vault
-                                </h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>Quick access to your finalized designs, source code repositories, and documentation.</p>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-                                    {(data.resources || []).length > 0 ? data.resources.map(res => (
-                                        <a key={res.id} href={res.link} target="_blank" rel="noopener noreferrer" style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 12, 
-                                            padding: 16, 
-                                            background: 'white', 
-                                            border: '1px solid var(--border)', 
-                                            borderRadius: 12,
-                                            textDecoration: 'none',
-                                            color: 'inherit',
-                                            transition: 'transform 0.2s',
-                                        }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                                            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-50)', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {res.type === 'design' ? <Layout size={20} /> : <ExternalLink size={20} />}
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{res.title}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{res.type?.toUpperCase()} Deliverable</div>
-                                            </div>
-                                        </a>
-                                    )) : <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: 20, background: 'var(--bg-hover)', borderRadius: 12, color: 'var(--text-muted)' }}>No deliverables linked yet.</div>}
-                                </div>
-                            </div>
-
-                            <div className="card" style={{ marginBottom: 30, border: '1px solid var(--amber-200)', background: 'var(--amber-50)' }}>
-                                <h3 style={{ marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <FileText size={20} style={{ color: 'var(--amber-600)' }} />
-                                    Project Agreement (SOW)
-                                </h3>
-                                <div style={{ 
-                                    padding: 20, 
-                                    background: 'white', 
-                                    borderRadius: 12, 
-                                    fontSize: '0.95rem',
-                                    lineHeight: 1.6,
-                                    whiteSpace: 'pre-wrap',
-                                    maxHeight: 300,
-                                    overflowY: 'auto',
-                                    border: '1px solid var(--border)',
-                                    marginBottom: 20
-                                }}>
-                                    {project.sow || "No agreement document uploaded yet."}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 15 }}>
-                                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: project.sow_accepted_by_client ? 'var(--green-600)' : 'var(--amber-600)' }}>
-                                            {project.sow_accepted_by_client ? <CheckCircle size={16} /> : <Clock size={16} />}
-                                            {project.sow_accepted_by_client ? "Accepted by You" : "Awaiting Your Acceptance"}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: project.sow_accepted_by_admin ? 'var(--green-600)' : 'var(--amber-600)' }}>
-                                            {project.sow_accepted_by_admin ? <CheckCircle size={16} /> : <Clock size={16} />}
-                                            {project.sow_accepted_by_admin ? "Approved by Admin" : "Awaiting Admin Approval"}
-                                        </div>
+                            {/* Resources & SOW */}
+                            <div className="card-group-two">
+                                <div className="card glass-card">
+                                    <div className="card-header">
+                                        <h3 className="card-title"><CreditCard size={20} className="icon-purple" /> Deliverables Vault</h3>
                                     </div>
-                                    {!project.sow_accepted_by_client && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
-                                                <input id="sow-agree" type="checkbox" required style={{ width: 16, height: 16, cursor: 'pointer' }} onChange={(e) => setAgreed(e.target.checked)} />
-                                                <label htmlFor="sow-agree" style={{ cursor: 'pointer' }}>I agree to the terms and conditions</label>
+                                    <div className="vault-list">
+                                        {(data.resources || []).map(res => (
+                                            <a key={res.id} href={res.link} target="_blank" rel="noreferrer" className="vault-item">
+                                                <ExternalLink size={16} />
+                                                <span>{res.title}</span>
+                                            </a>
+                                        ))}
+                                        {(data.resources || []).length === 0 && <p className="text-muted">No shared assets yet.</p>}
+                                    </div>
+                                </div>
+
+                                <div className={`card glass-card sow-card ${project.sow_accepted_by_client ? 'accepted' : 'pending'}`}>
+                                    <div className="card-header">
+                                        <h3 className="card-title"><FileText size={20} /> Agreement & SOW</h3>
+                                    </div>
+                                    <p className="sow-summary">{project.sow ? project.sow.substring(0, 100) + '...' : "Check your project agreement here."}</p>
+                                    <div className="sow-actions">
+                                        {project.sow_accepted_by_client ? (
+                                            <div className="sow-status">
+                                                <CheckCircle size={16} className="text-green-500" />
+                                                <span>Accepted</span>
                                             </div>
-                                            <button 
-                                                className="btn btn-primary"
-                                                disabled={!agreed}
-                                                onClick={async () => {
-                                                    try {
-                                                        await portalAPI.acceptSOW(token);
-                                                        toast("SOW Accepted!", "success");
-                                                        load();
-                                                    } catch { toast("Failed to accept SOW", "error"); }
-                                                }}
-                                            >
-                                                Accept & Proceed
-                                            </button>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <button className="btn btn-indigo btn-sm" onClick={async () => {
+                                                if (window.confirm("Do you agree to the SOW terms?")) {
+                                                    try { await portalAPI.acceptSOW(token); toast("SOW Accepted!", "success"); load(); }
+                                                    catch { toast("Error", "error"); }
+                                                }
+                                            }}>Accept Terms</button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="card" style={{ marginBottom: 30 }}>
-                                <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <Activity size={20} className="text-primary" />
-                                    Project Updates & Timeline
-                                </h3>
-                                <div className="timeline" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {/* Communication Hub */}
+                            <div className="card glass-card">
+                                <div className="card-header">
+                                    <h3 className="card-title">
+                                        <MessageSquare size={20} className="icon-indigo" />
+                                        Project Timeline & Discussion
+                                    </h3>
+                                </div>
+                                <div className="portal-timeline">
                                     {(data.updates || []).length === 0 ? (
-                                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No updates posted yet.</p>
+                                        <div className="timeline-empty">We will post your project updates here.</div>
                                     ) : (
                                         data.updates.map(update => (
-                                            <div key={update.id} className="timeline-item" style={{ padding: 20, background: 'var(--bg-hover)', borderRadius: 12, borderLeft: '4px solid var(--primary-500)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                                                    <div>
-                                                        <h4 style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{update.title}</h4>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 800 }}>
-                                                                {update.author?.name?.charAt(0)}
-                                                            </div>
-                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                                Posted by <strong>{update.author?.name}</strong> • {new Date(update.created_at).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
+                                            <div key={update.id} className="timeline-entry">
+                                                <div className="entry-header">
+                                                    <div className="entry-user">
+                                                        {update.author?.name?.charAt(0)}
+                                                    </div>
+                                                    <div className="entry-meta">
+                                                        <strong>{update.title}</strong>
+                                                        <span>{new Date(update.created_at).toLocaleDateString()}</span>
                                                     </div>
                                                 </div>
-                                                <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 15, lineHeight: 1.6 }}>{update.description}</p>
-                                                
-                                                {update.link && (
-                                                    <a href={update.link} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary" style={{ marginBottom: 15, display: 'inline-flex', gap: 6, fontSize: '0.8rem', background: 'white' }}>
-                                                        <ExternalLink size={14} /> View Deliverable
-                                                    </a>
-                                                )}
-
-                                                <div className="comments-section" style={{ borderTop: '1px solid var(--border)', paddingTop: 15, marginTop: 5 }}>
-                                                    <h5 style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 10, color: 'var(--text-muted)' }}>Team Discussion</h5>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 15 }}>
-                                                        {(update.comments || []).map(comment => (
-                                                            <div key={comment.id} style={{ padding: '8px 12px', background: 'white', borderRadius: 8, border: '1px solid var(--border)', fontSize: '0.85rem' }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                                    <span style={{ fontWeight: 700, color: 'var(--primary-700)' }}>{comment.user?.name}</span>
-                                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(comment.created_at).toLocaleTimeString()}</span>
-                                                                </div>
-                                                                <div>{comment.content}</div>
-                                                            </div>
-                                                        ))}
-                                                        {(update.comments || []).length === 0 && <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-muted)' }}>No comments yet.</p>}
-                                                    </div>
-                                                    
-                                                    <div style={{ display: 'flex', gap: 10 }}>
-                                                        <input 
-                                                            className="form-control" 
-                                                            style={{ height: 36, fontSize: '0.85rem' }} 
-                                                            placeholder="Write a comment..." 
-                                                            onKeyDown={async (e) => {
-                                                                if (e.key === 'Enter' && e.target.value.trim()) {
-                                                                    try {
-                                                                        const text = e.target.value;
-                                                                        e.target.value = '';
-                                                                        // Since it's a portal, we might need a special API or just use the project update comments API if it allows portal tokens
-                                                                        await portalAPI.postComment(token, { update_id: update.id, content: text });
-                                                                        toast("Comment posted", "success");
-                                                                        load(); // Refresh data
-                                                                    } catch { toast("Failed to post comment", "error"); }
-                                                                }
-                                                            }}
-                                                        />
-                                                    </div>
+                                                <p className="entry-desc">{update.description}</p>
+                                                <div className="entry-comments">
+                                                    {(update.comments || []).map(c => (
+                                                        <div key={c.id} className="comment-bubble">
+                                                            <strong>{c.user?.name}:</strong> {c.content}
+                                                        </div>
+                                                    ))}
+                                                    <input 
+                                                        className="comment-input" 
+                                                        placeholder="Post a reply..." 
+                                                        onKeyDown={async (e) => {
+                                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                                                try {
+                                                                    await portalAPI.postComment(token, { update_id: update.id, content: e.target.value });
+                                                                    e.target.value = '';
+                                                                    toast("Comment Posted", "success");
+                                                                    load();
+                                                                } catch { toast("Failed", "error"); }
+                                                            }
+                                                        }}
+                                                    />
                                                 </div>
                                             </div>
                                         ))
@@ -327,176 +300,277 @@ export default function ClientPortal() {
                         </>
                     )}
 
-                    <div className="card">
-                        <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <FileText size={20} className="text-primary" />
-                            Outstanding Invoices
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Financial Section */}
+                    <div className="card glass-card financial-card">
+                        <div className="card-header">
+                            <h3 className="card-title">
+                                <CreditCard size={20} className="icon-green" />
+                                Invoices & Milestone Payments
+                            </h3>
+                        </div>
+                        <div className="portal-invoices">
                             {invoices.length > 0 ? invoices.map(inv => (
-                                <div key={inv.id} className="invoice-item" style={{
-                                    padding: 20,
-                                    borderRadius: 12,
-                                    border: '1px solid var(--border)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}>
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{inv.invoice_number}</div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Due: {new Date(inv.due_date).toLocaleDateString()}</div>
-                                        <div style={{ marginTop: 8 }}>
-                                            <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>₹{inv.total.toLocaleString()}</span>
-                                            {inv.paid_amount > 0 && (
-                                                <span style={{ marginLeft: 10, fontSize: '0.85rem', color: 'var(--green-600)' }}>
-                                                    (Paid: ₹{inv.paid_amount.toLocaleString()})
-                                                </span>
-                                            )}
-                                        </div>
+                                <div key={inv.id} className={`inv-row ${inv.status}`}>
+                                    <div className="inv-info">
+                                        <span className="inv-num">{inv.invoice_number}</span>
+                                        <span className="inv-date">Due: {new Date(inv.due_date).toLocaleDateString()}</span>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div className={`badge ${inv.status === 'paid' ? 'green' : 'amber'}`} style={{ marginBottom: 12 }}>{inv.status}</div>
-                                        {inv.status !== 'paid' && (
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={() => {
-                                                    // Set local state if project view to handle specific invoice payment
-                                                    // In simplest form, redirect or handle here
-                                                    handlePayment();
-                                                }}
-                                                disabled={processing}
-                                            >
-                                                <CreditCard size={15} style={{ marginRight: 8 }} />
-                                                {processing ? 'Processing...' : 'Pay Now'}
+                                    <div className="inv-amount">₹{inv.total.toLocaleString()}</div>
+                                    <div className="inv-status">
+                                        {inv.status === 'paid' ? (
+                                            <span className="paid-badge"><CheckCircle size={14} /> Paid</span>
+                                        ) : (
+                                            <button className="btn btn-primary btn-sm" onClick={handlePayment} disabled={processing}>
+                                                {processing ? '...' : 'Pay Now'}
                                             </button>
                                         )}
                                     </div>
                                 </div>
-                            )) : (
-                                <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</p>
-                            )}
+                            )) : <p className="text-center p-4">No invoices records found.</p>}
                         </div>
                     </div>
-                </div>
+                </main>
 
-                <div className="portal-sidebar">
-                    {project && (
-                        <div className="card" style={{ marginBottom: 24 }}>
-                            <h4 style={{ marginBottom: 15, fontSize: '0.95rem' }}>Project Team</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {project.creator && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div className="avatar sm" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}>
-                                            {project.creator.name?.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{project.creator.name}</div>
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Project Account Manager</div>
-                                        </div>
-                                    </div>
-                                )}
-                                {(project.assignments || []).map(asg => (
-                                    <div key={asg.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div className="avatar sm" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                                            {asg.user?.name?.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{asg.user?.name}</div>
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{asg.role === 'lead' ? 'Tech Lead' : 'Developer'}</div>
-                                        </div>
-                                    </div>
-                                ))}
+                <aside className="portal-sidebar">
+                    {/* PM Contact Card */}
+                    <div className="card PM-card">
+                        <h4>Direct Support</h4>
+                        <div className="pm-info">
+                            <div className="pm-avatar">{project?.creator?.name?.charAt(0) || 'A'}</div>
+                            <div className="pm-text">
+                                <strong>{project?.creator?.name || 'Account Manager'}</strong>
+                                <span>{project?.creator?.role || 'Project Lead'}</span>
                             </div>
                         </div>
-                    )}
-
-                    <div className="card" style={{ background: 'var(--primary-600)', color: 'white' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <LifeBuoy size={20} />
-                            <h4 style={{ margin: 0 }}>Help & Support</h4>
-                        </div>
-                        <p style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: 20 }}>
-                            Need immediate assistance? Raise a priority ticket and our team will get back to you within 4 hours.
-                        </p>
-                        <button
-                            className="btn w-full btn-white"
-                            style={{ background: 'white', color: 'var(--primary-600)', fontWeight: 700 }}
-                            onClick={() => setShowTicketModal(true)}
-                        >
-                            Raise Support Ticket
+                        <button className="btn btn-indigo btn-block" onClick={async () => {
+                            if (!project) return;
+                            try {
+                                await portalAPI.requestChat(token, { user_id: project.created_by });
+                                toast("Chat Request Sent!", "success");
+                            } catch (err) {
+                                toast(err.response?.data?.error || "Error", "error");
+                            }
+                        }}>
+                             <MessageSquare size={16} /> Request Chat
                         </button>
                     </div>
 
-                    <div className="card" style={{ marginTop: 24, border: '1px dashed var(--primary-300)', background: 'var(--primary-50)' }}>
-                        <h4 style={{ color: 'var(--primary-700)', fontSize: '0.95rem' }}>Refer & Earn</h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--primary-600)', marginTop: 8 }}>
-                            Think we're doing a great job? Refer a colleague and get <strong>10% OFF</strong> your next invoice!
-                        </p>
-                        <button className="btn btn-sm btn-primary" style={{ marginTop: 12, width: '100%' }}>Copy Referral Link</button>
+                    {/* Referral Card */}
+                    <div className="card referral-card">
+                        <Share2 className="ref-icon" />
+                        <h4>Refer & Earn 10%</h4>
+                        <p>Loving your product? Refer us to another client and earn 10% cashback on your next invoice.</p>
+                        <button className="btn btn-outline btn-block" onClick={() => {
+                            navigator.clipboard.writeText("Check out Appnity Softwares for high-end web/app development!");
+                            toast("Referral link copied!", "success");
+                        }}>Copy Referral Link</button>
                     </div>
 
-                    <div className="card" style={{ marginTop: 24 }}>
-                        <h4>My Tickets</h4>
-                        <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {tickets.length > 0 ? tickets.map(t => (
-                                <div key={t.id} style={{ padding: 12, background: 'var(--bg-hover)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t.subject}</div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                                        <span className={`badge ${t.status === 'open' ? 'red' : t.status === 'closed' ? 'green' : 'blue'}`} style={{ fontSize: '0.6rem', padding: '2px 8px' }}>{t.status}</span>
-                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(t.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                </div>
-                            )) : <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>No active tickets.</p>}
-                        </div>
+                    {/* Quick Access Card */}
+                    <div className="card quick-card">
+                        <h4>Need Assistance?</h4>
+                        <button className="q-link" onClick={() => setShowTicketModal(true)}>
+                            <LifeBuoy size={16} /> Raise Support Ticket
+                        </button>
+                        <button className="q-link" onClick={() => toast("Redirecting to billing...", "info")}>
+                            <FileText size={16} /> Request Quotation
+                        </button>
                     </div>
 
-                    <div className="card" style={{ marginTop: 24 }}>
-                        <h4>Financial Summary</h4>
-                        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span className="text-muted">Total Billed</span>
-                                <span style={{ fontWeight: 600 }}>₹{invoices.reduce((a, b) => a + b.total, 0).toLocaleString()}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span className="text-muted">Total Paid</span>
-                                <span style={{ fontWeight: 600, color: 'var(--green-600)' }}>₹{invoices.reduce((a, b) => a + (b.paid_amount || 0), 0).toLocaleString()}</span>
-                            </div>
-                            <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800 }}>
-                                <span>Balance Due</span>
-                                <span style={{ color: 'var(--red-500)' }}>₹{invoices.reduce((a, b) => a + (b.total - (b.paid_amount || 0)), 0).toLocaleString()}</span>
-                            </div>
-                        </div>
+                    {/* Help Heart */}
+                    <div className="help-heart">
+                        <Heart size={20} fill="#ef4444" stroke="none" />
+                        <span>Built with care by Appnity</span>
                     </div>
-                </div>
+                </aside>
             </div>
+
             {showTicketModal && (
-                <Modal title="Raise Support Ticket" onClose={() => setShowTicketModal(false)}>
-                    <form onSubmit={handleRaiseTicket}>
+                <Modal title="Report an Issue" onClose={() => setShowTicketModal(false)}>
+                    <form onSubmit={handleRaiseTicket} className="portal-form">
                         <div className="form-group">
                             <label>Subject</label>
-                            <input required value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} placeholder="E.g. Issue with website loading" />
+                            <input required value={ticketForm.subject} onChange={e => setTicketForm({...ticketForm, subject: e.target.value})} placeholder="E.g. Error in beta build" />
                         </div>
-                        <div className="form-group" style={{ marginTop: 15 }}>
+                        <div className="form-group">
+                            <label>Detailed Description</label>
+                            <textarea required rows={4} value={ticketForm.description} onChange={e => setTicketForm({...ticketForm, description: e.target.value})} placeholder="What's happening?" />
+                        </div>
+                        <div className="form-group">
                             <label>Priority</label>
-                            <select value={ticketForm.priority} onChange={e => setTicketForm({ ...ticketForm, priority: e.target.value })}>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
+                            <select value={ticketForm.priority} onChange={e => setTicketForm({...ticketForm, priority: e.target.value})}>
+                                <option value="low">Low - Minor issue</option>
+                                <option value="medium">Medium - Standard issue</option>
+                                <option value="high">High - Critical blocker</option>
                             </select>
                         </div>
-                        <div className="form-group" style={{ marginTop: 15 }}>
-                            <label>Description</label>
-                            <textarea required rows={4} value={ticketForm.description} onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })} placeholder="Describe your issue in detail..." />
-                        </div>
-                        <div className="form-actions" style={{ marginTop: 20 }}>
-                            <button type="button" className="btn btn-secondary" onClick={() => setShowTicketModal(false)}>Cancel</button>
-                            <button type="submit" className="btn btn-primary" disabled={savingTicket}>{savingTicket ? 'Raising...' : 'Raise Ticket'}</button>
+                        <div className="modal-footer" style={{ marginTop: 20 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowTicketModal(false)} style={{ marginRight: 10 }}>Back</button>
+                            <button type="submit" className="btn btn-indigo" disabled={savingTicket}>
+                                {savingTicket ? 'Submitting...' : 'Send Request'}
+                            </button>
                         </div>
                     </form>
                 </Modal>
             )}
+
             <GlobalHelpButton />
+
+            <style>{`
+                .portal-page {
+                    min-height: 100vh;
+                    background: var(--bg-body);
+                    color: var(--text-primary);
+                    padding-bottom: 60px;
+                }
+                .portal-hero {
+                    background: linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%);
+                    padding: 80px 0;
+                    color: white;
+                    margin-bottom: -60px;
+                    text-align: left;
+                }
+                .hero-content { max-width: 850px; }
+                .brand-badge {
+                    display: inline-block;
+                    padding: 6px 14px;
+                    background: rgba(255,255,255,0.1);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 30px;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1.5px;
+                    margin-bottom: 25px;
+                }
+                .hero-content h1 { font-size: 3rem; font-weight: 900; margin-bottom: 15px; letter-spacing: -1px; }
+                .hero-content p { font-size: 1.25rem; opacity: 0.8; margin-bottom: 40px; line-height: 1.5; }
+                .hero-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+                .stat-pill {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 20px;
+                    background: rgba(255,255,255,0.08);
+                    border-radius: 16px;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                }
+                .stat-pill.primary { background: #6366f1; border-color: #818cf8; }
+
+                .portal-container { max-width: 1300px; margin: 0 auto; padding: 0 40px; }
+                .portal-content-grid { display: grid; grid-template-columns: 1fr 360px; gap: 60px; }
+                
+                .glass-card {
+                    background: var(--bg-card);
+                    border: 1px solid var(--border);
+                    border-radius: 30px;
+                    padding: 40px;
+                    margin-bottom: 50px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .glass-card:hover { transform: translateY(-8px); box-shadow: 0 30px 60px rgba(0,0,0,0.08); border-color: var(--primary-200); }
+                
+                .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+                .card-title { font-size: 1.5rem; font-weight: 900; display: flex; align-items: center; gap: 15px; letter-spacing: -0.5px; }
+                
+                .milestone-track { display: flex; align-items: center; justify-content: space-between; padding: 30px 0; max-width: 90%; margin: 0 auto; }
+                .milestone-node { position: relative; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 1; }
+                .node-icon { 
+                    width: 44px; height: 44px; background: var(--bg-hover); border: 2px solid var(--border); 
+                    border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); 
+                    transition: 0.4s;
+                }
+                .milestone-node.active .node-icon { background: #4f46e5; border-color: #4f46e5; color: white; box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
+                .milestone-node span { font-size: 0.9rem; font-weight: 800; color: var(--text-muted); }
+                .milestone-node.active span { color: var(--text-primary); }
+                .milestone-line { flex: 1; height: 3px; background: var(--border); margin: 0 -15px; margin-top: -30px; }
+
+                .mini-kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+                .kanban-col { background: var(--bg-hover); padding: 20px; border-radius: 20px; min-height: 150px; border: 1px solid var(--border-light); }
+                .col-label { font-size: 0.75rem; font-weight: 900; color: var(--text-muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+                .task-mini-card { background: var(--bg-card); padding: 12px 16px; border-radius: 12px; font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+                
+                .card-group-two { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-bottom: 50px; }
+                .card-group-two .glass-card { margin-bottom: 0; }
+                
+                .vault-list { display: flex; flex-direction: column; gap: 12px; }
+                .vault-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; background: var(--bg-hover); border-radius: 16px; font-weight: 700; transition: all 0.3s; color: var(--text-secondary); }
+                .vault-item:hover { background: var(--primary-50); color: #4f46e5; transform: translateX(5px); }
+                
+                .sow-card.accepted { border-color: #10b981; background: #f0fdf4; }
+                .sow-summary { font-size: 1rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 25px; font-style: italic; }
+
+                .portal-timeline { display: flex; flex-direction: column; gap: 30px; }
+                .timeline-entry { position: relative; padding-left: 30px; border-left: 3px solid #eef2ff; }
+                .entry-header { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; }
+                .entry-user { width: 42px; height: 42px; background: #4f46e5; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; }
+                .entry-meta { display: flex; flex-direction: column; }
+                .entry-meta strong { font-size: 1.1rem; font-weight: 800; }
+                .entry-meta span { font-size: 0.8rem; color: var(--text-muted); }
+                .entry-desc { font-size: 1rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.7; }
+                .entry-comments { background: var(--bg-hover); padding: 25px; border-radius: 24px; border: 1px solid var(--border-light); }
+                .comment-bubble { font-size: 0.95rem; margin-bottom: 12px; background: var(--bg-card); padding: 12px 18px; border-radius: 14px; border: 1px solid var(--border); }
+                .comment-input { width: 100%; background: var(--bg-card); border: 1px solid var(--border); padding: 14px 20px; border-radius: 14px; outline: none; transition: 0.3s; font-weight: 500; }
+                .comment-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+
+                .portal-invoices { display: flex; flex-direction: column; gap: 20px; }
+                .inv-row { display: flex; align-items: center; justify-content: space-between; padding: 25px; background: var(--bg-hover); border-radius: 20px; border: 1px solid var(--border); transition: 0.3s; }
+                .inv-row:hover { border-color: var(--primary-300); background: var(--bg-card); }
+                .inv-row.paid { border-left: 6px solid #10b981; }
+                .inv-info { display: flex; flex-direction: column; gap: 4px; }
+                .inv-num { font-weight: 900; font-size: 1.1rem; }
+                .inv-date { font-size: 0.85rem; color: var(--text-muted); }
+                .inv-amount { font-size: 1.4rem; font-weight: 900; color: var(--text-primary); letter-spacing: -0.5px; }
+                .paid-badge { background: #f0fdf4; color: #059669; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+
+                .portal-sidebar { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 100px; height: fit-content; }
+                .PM-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 30px; padding: 35px; box-shadow: var(--shadow-md); }
+                .PM-card h4 { margin-bottom: 25px; font-weight: 900; font-size: 1.1rem; }
+                .pm-info { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+                .pm-avatar { width: 50px; height: 50px; background: #6366f1; color: white; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; }
+                .pm-text { display: flex; flex-direction: column; }
+                .pm-text strong { font-size: 1rem; font-weight: 800; }
+                .pm-text span { font-size: 0.8rem; color: var(--text-muted); }
+                
+                .referral-card { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; padding: 35px; border-radius: 30px; text-align: center; box-shadow: 0 20px 40px rgba(30, 27, 75, 0.2); }
+                .ref-icon { font-size: 40px; color: #fbbf24; margin-bottom: 20px; }
+                .referral-card h4 { font-weight: 900; font-size: 1.2rem; margin-bottom: 10px; }
+                .referral-card p { font-size: 0.9rem; opacity: 0.8; margin-bottom: 25px; line-height: 1.5; }
+
+                .quick-card { padding: 35px; border-radius: 30px; }
+                .quick-card h4 { margin-bottom: 20px; font-weight: 900; }
+                .q-link { 
+                    display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px; background: none; 
+                    border: none; border-bottom: 1px solid var(--border-light); color: var(--text-primary); font-weight: 700; 
+                    text-align: left; transition: all 0.3s;
+                }
+                .q-link:last-child { border-bottom: none; }
+                .q-link:hover { padding-left: 20px; color: #4f46e5; background: #f5f3ff; border-radius: 12px; }
+
+                .help-heart { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 30px; color: var(--text-muted); font-size: 0.85rem; font-weight: 800; }
+
+                .btn-indigo { background: #4f46e5; color: white; transition: 0.3s; font-weight: 800; }
+                .btn-indigo:hover { background: #4338ca; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2); }
+                .btn-block { width: 100%; display: flex; justify-content: center; gap: 12px; margin-top: 15px; padding: 14px; border-radius: 16px; font-size: 0.95rem; }
+                .btn-outline { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
+                .btn-outline:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+
+                .text-green-500 { color: #10b981; }
+                .badge-outline { padding: 4px 12px; border: 1px solid #4f46e5; color: #4f46e5; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+
+                .portal-loading, .portal-error { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; padding: 40px; }
+                .portal-error h1 { font-size: 2rem; font-weight: 900; }
+                
+                @media (max-width: 1200px) {
+                    .portal-content-grid { grid-template-columns: 1fr; gap: 40px; }
+                    .portal-sidebar { position: static; }
+                    .card-group-two { grid-template-columns: 1fr; gap: 40px; }
+                }
+            `}</style>
         </div>
     );
 }
