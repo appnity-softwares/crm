@@ -202,11 +202,20 @@ export default function ClientPortal() {
                                     ) : (
                                         data.updates.map(update => (
                                             <div key={update.id} className="timeline-item" style={{ padding: 20, background: 'var(--bg-hover)', borderRadius: 12, borderLeft: '4px solid var(--primary-500)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                                                    <h4 style={{ fontWeight: 700 }}>{update.title}</h4>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(update.created_at).toLocaleDateString()}</span>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                                    <div>
+                                                        <h4 style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{update.title}</h4>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--primary-100)', color: 'var(--primary-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 800 }}>
+                                                                {update.author?.name?.charAt(0)}
+                                                            </div>
+                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                                Posted by <strong>{update.author?.name}</strong> • {new Date(update.created_at).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', marginBottom: 15 }}>{update.description}</p>
+                                                <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 15, lineHeight: 1.6 }}>{update.description}</p>
                                                 
                                                 {update.link && (
                                                     <a href={update.link} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary" style={{ marginBottom: 15, display: 'inline-flex', gap: 6, fontSize: '0.8rem', background: 'white' }}>
@@ -310,37 +319,78 @@ export default function ClientPortal() {
                 </div>
 
                 <div className="portal-sidebar">
+                    {project && (
+                        <div className="card" style={{ marginBottom: 24 }}>
+                            <h4 style={{ marginBottom: 15, fontSize: '0.95rem' }}>Project Team</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {project.creator && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div className="avatar sm" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}>
+                                            {project.creator.name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{project.creator.name}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Project Account Manager</div>
+                                        </div>
+                                    </div>
+                                )}
+                                {(project.assignments || []).map(asg => (
+                                    <div key={asg.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div className="avatar sm" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+                                            {asg.user?.name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{asg.user?.name}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{asg.role === 'lead' ? 'Tech Lead' : 'Developer'}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="card" style={{ background: 'var(--primary-600)', color: 'white' }}>
-                        <h4>Help & Support</h4>
-                        <p style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: 10, marginBottom: 20 }}>
-                            If you have any questions regarding your project or invoices, please reach out to our team.
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                            <LifeBuoy size={20} />
+                            <h4 style={{ margin: 0 }}>Help & Support</h4>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: 20 }}>
+                            Need immediate assistance? Raise a priority ticket and our team will get back to you within 4 hours.
                         </p>
                         <button
-                            className="btn w-full"
-                            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}
+                            className="btn w-full btn-white"
+                            style={{ background: 'white', color: 'var(--primary-600)', fontWeight: 700 }}
                             onClick={() => setShowTicketModal(true)}
                         >
                             Raise Support Ticket
                         </button>
                     </div>
 
+                    <div className="card" style={{ marginTop: 24, border: '1px dashed var(--primary-300)', background: 'var(--primary-50)' }}>
+                        <h4 style={{ color: 'var(--primary-700)', fontSize: '0.95rem' }}>Refer & Earn</h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--primary-600)', marginTop: 8 }}>
+                            Think we're doing a great job? Refer a colleague and get <strong>10% OFF</strong> your next invoice!
+                        </p>
+                        <button className="btn btn-sm btn-primary" style={{ marginTop: 12, width: '100%' }}>Copy Referral Link</button>
+                    </div>
+
                     <div className="card" style={{ marginTop: 24 }}>
                         <h4>My Tickets</h4>
                         <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {tickets.length > 0 ? tickets.map(t => (
-                                <div key={t.id} style={{ padding: 10, background: 'var(--bg-hover)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t.subject}</div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                                        <span className={`badge ${t.status === 'open' ? 'red' : t.status === 'closed' ? 'green' : 'blue'}`} style={{ fontSize: '0.6rem' }}>{t.status}</span>
+                                <div key={t.id} style={{ padding: 12, background: 'var(--bg-hover)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t.subject}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                                        <span className={`badge ${t.status === 'open' ? 'red' : t.status === 'closed' ? 'green' : 'blue'}`} style={{ fontSize: '0.6rem', padding: '2px 8px' }}>{t.status}</span>
                                         <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(t.created_at).toLocaleDateString()}</span>
                                     </div>
                                 </div>
-                            )) : <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No tickets found.</p>}
+                            )) : <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>No active tickets.</p>}
                         </div>
                     </div>
 
                     <div className="card" style={{ marginTop: 24 }}>
-                        <h4>Account Summary</h4>
+                        <h4>Financial Summary</h4>
                         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span className="text-muted">Total Billed</span>
@@ -352,7 +402,7 @@ export default function ClientPortal() {
                             </div>
                             <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800 }}>
-                                <span>Total Due</span>
+                                <span>Balance Due</span>
                                 <span style={{ color: 'var(--red-500)' }}>₹{invoices.reduce((a, b) => a + (b.total - (b.paid_amount || 0)), 0).toLocaleString()}</span>
                             </div>
                         </div>
