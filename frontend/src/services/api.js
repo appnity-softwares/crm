@@ -229,7 +229,9 @@ export const chatAPI = {
     getHistory: (uid) => api.get(`/chat/history/${uid}`),
     send: (data) => api.post('/chat/send', data),
     edit: (mid, data) => api.put(`/chat/${mid}`, data),
-    remove: (mid, forEveryone) => api.delete(`/chat/${mid}`, { data: { delete_for_everyone: forEveryone } }),
+    remove: (id, forEveryone) => api.delete(`/chat/${id}`, { data: { delete_for_everyone: forEveryone } }),
+    toggleReaction: (id, emoji) => api.put(`/chat/${id}/reaction`, { emoji }),
+    togglePin: (id) => api.put(`/chat/${id}/pin`),
 };
 
 export const taskAPI = {

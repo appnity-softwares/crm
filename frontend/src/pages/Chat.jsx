@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X, Copy, UserMinus } from 'lucide-react';
+import { Send, Search, MessageSquare, ChevronLeft, Smile, Clock, Check, CheckCheck, Users, MoreVertical, Edit2, Trash2, Image as ImageIcon, Link as LinkIcon, X, Copy, UserMinus, CornerUpLeft, Pin, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -18,6 +18,8 @@ export default function Chat() {
     const [editText, setEditText] = useState('');
     const [mobileView, setMobileView] = useState('list');
     const [isFirstLoad, setIsFirstLoad] = useState(true);
+    const [replyTo, setReplyTo] = useState(null);
+    const [showOnlyPinned, setShowOnlyPinned] = useState(false);
     
     const scrollRef = useRef();
     const scrollContainerRef = useRef();
@@ -104,8 +106,11 @@ export default function Chat() {
             await chatAPI.send({ 
                 receiver_id: selectedUser.id, 
                 content,
-                type: msgType 
+                type: msgType,
+                parent_id: replyTo?.id,
+                is_critical: content.toUpperCase().includes('CRITICAL') || content.toUpperCase().includes('URGENT')
             });
+            setReplyTo(null);
             isAtBottom.current = true;
             loadHistory(selectedUser.id);
         } catch (err) {
@@ -114,6 +119,20 @@ export default function Chat() {
             setSending(false);
             inputRef.current?.focus();
         }
+    };
+
+    const handleToggleReaction = async (mid, emoji) => {
+        try {
+            await chatAPI.toggleReaction(mid, emoji);
+            loadHistory(selectedUser.id);
+        } catch (err) { console.error('Reaction failed:', err); }
+    };
+
+    const handleTogglePin = async (mid) => {
+        try {
+            await chatAPI.togglePin(mid);
+            loadHistory(selectedUser.id);
+        } catch (err) { console.error('Pin failed:', err); }
     };
 
     const handleEdit = async (e) => {
@@ -210,75 +229,89 @@ export default function Chat() {
                                     <div className="chat-header-name">{selectedUser.name}</div>
                                     <div className="chat-header-status"><span className="chat-status-dot" /> Online</div>
                                 </div>
+                                <div className="chat-header-actions">
+                                    <button 
+                                        className={`btn-icon ${showOnlyPinned ? 'active' : ''}`} 
+                                        onClick={() => setShowOnlyPinned(!showOnlyPinned)}
+                                        title="Show Pinned Only"
+                                    >
+                                        <Pin size={18} />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="chat-messages" ref={scrollContainerRef} onScroll={handleScroll}>
                                 {messages.map((m) => {
                                     const isMine = m.sender_id === me.id;
                                     const sender = isMine ? me : selectedUser;
+                                    const isAdmin = me.role === 'admin' || me.role === 'manager';
+
+                                    if (showOnlyPinned && !m.is_pinned) return null;
+
                                     return (
                                         <div key={m.id} className={`chat-bubble-wrap ${isMine ? 'chat-bubble-wrap--mine' : 'chat-bubble-wrap--theirs'}`}>
                                             {!isMine && (
                                                 <div className="chat-bubble-avatar" style={{ background: sender.avatar ? 'transparent' : `hsl(${sender.name.length * 40 % 360}, 60%, 45%)` }}>
-                                                    {sender.avatar ? (
-                                                        <img src={sender.avatar} alt="" />
-                                                    ) : (
-                                                        sender.name.charAt(0)
-                                                    )}
+                                                    {sender.avatar ? <img src={sender.avatar} alt="" /> : sender.name.charAt(0)}
                                                 </div>
                                             )}
-                                            <div className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}>
+                                            <div className={`chat-bubble ${isMine ? 'chat-bubble--mine' : 'chat-bubble--theirs'} ${m.is_critical ? 'is-critical' : ''}`}>
+                                                
+                                                {m.parent && (
+                                                    <div className="chat-reply-quote" onClick={() => {
+                                                        const el = document.getElementById(`msg-${m.parent_id}`);
+                                                        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        el?.classList.add('highlight-flash');
+                                                        setTimeout(() => el?.classList.remove('highlight-flash'), 2000);
+                                                    }}>
+                                                        <div className="quote-sender">{m.parent.sender_id === me.id ? 'You' : selectedUser.name}</div>
+                                                        <div className="quote-text">{m.parent.content.substring(0, 60)}...</div>
+                                                    </div>
+                                                )}
+
+                                                {m.is_pinned && <div className="pinned-badge"><Pin size={10} /> Pinned</div>}
+                                                {m.is_critical && <div className="critical-badge"><AlertCircle size={10} /> CRITICAL</div>}
+
                                                 {m.type === 'image' ? (
                                                     <img src={m.content} alt="shared" className="chat-img-preview" />
                                                 ) : (
-                                                <div className="chat-md-content">
-                                                    <ReactMarkdown 
-                                                        remarkPlugins={[remarkGfm]}
-                                                        components={{
-                                                            a: ({node, ...props}) => {
-                                                                const isImg = props.href?.match(/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/i);
-                                                                if (isImg) return <img src={props.href} alt="shared" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 8, display: 'block' }} />;
-                                                                return <a {...props} target="_blank" rel="noopener noreferrer" />;
-                                                            },
-                                                            p: ({children}) => <p style={{ whiteSpace: 'pre-wrap' }}>{children}</p>
-                                                        }}
-                                                    >
-                                                        {m.content}
-                                                    </ReactMarkdown>
-                                                </div>
+                                                    <div className="chat-md-content">
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                                                    </div>
                                                 )}
+
                                                 <div className="chat-bubble-meta">
                                                     {m.is_edited && <span className="edited-label">(edited)</span>}
                                                     <span className="chat-bubble-time">{formatTime(m.created_at)}</span>
                                                     <StatusIcon status={m.status} isMine={isMine} />
                                                     
-                                                    {isMine ? (
-                                                        <div className="msg-actions">
-                                                            <button onClick={() => copyToClipboard(m.content)} title="Copy Raw Content">
-                                                                <Copy size={12} />
-                                                            </button>
-                                                            {canEdit(m) && (
-                                                                <button onClick={() => { setEditingMsg(m); setEditText(m.content); }} title="Edit">
-                                                                    <Edit2 size={12} />
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => handleDelete(m.id, false)} title="Delete for me">
-                                                                <UserMinus size={12} />
-                                                            </button>
-                                                            <button onClick={() => handleDelete(m.id, true)} className="text-danger" title="Delete for everyone">
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="msg-actions">
-                                                            <button onClick={() => copyToClipboard(m.content)} title="Copy Raw Content">
-                                                                <Copy size={12} />
-                                                            </button>
-                                                            <button onClick={() => handleDelete(m.id, false)} title="Hide for me">
-                                                                <X size={12} />
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                                    <div className="msg-actions">
+                                                        <button onClick={() => setReplyTo(m)} title="Reply"><CornerUpLeft size={12} /></button>
+                                                        {isAdmin && <button onClick={() => handleTogglePin(m.id)} title={m.is_pinned ? 'Unpin' : 'Pin'}><Pin size={12} /></button>}
+                                                        <button onClick={() => copyToClipboard(m.content)} title="Copy"><Copy size={12} /></button>
+                                                        {isMine && canEdit(m) && <button onClick={() => { setEditingMsg(m); setEditText(m.content); }}><Edit2 size={12} /></button>}
+                                                        {isMine && <button onClick={() => handleDelete(m.id, true)} className="text-danger"><Trash2 size={12} /></button>}
+                                                    </div>
+                                                </div>
+
+                                                {m.reactions?.length > 0 && (
+                                                    <div className="bubble-reactions">
+                                                        {['👍', '❤️', '✅'].map(emoji => {
+                                                            const count = m.reactions.filter(r => r.emoji === emoji).length;
+                                                            if (count === 0) return null;
+                                                            return (
+                                                                <span key={emoji} className={`reaction-pill ${m.reactions.some(r => r.emoji === emoji && r.user_id === me.id) ? 'active' : ''}`} onClick={() => handleToggleReaction(m.id, emoji)}>
+                                                                    {emoji} {count}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
+                                                <div className="hover-reaction-bar">
+                                                    {['👍', '❤️', '✅'].map(emoji => (
+                                                        <button key={emoji} onClick={() => handleToggleReaction(m.id, emoji)}>{emoji}</button>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>
@@ -290,8 +323,14 @@ export default function Chat() {
                             <div className="chat-input-bar-container">
                                 {editingMsg && (
                                     <div className="editing-bar">
-                                        <span>Editing message...</span>
+                                        <span><Edit2 size={12} /> Editing message...</span>
                                         <button onClick={() => setEditingMsg(null)}><X size={14} /></button>
+                                    </div>
+                                )}
+                                {replyTo && (
+                                    <div className="editing-bar" style={{ background: 'var(--primary-50)', color: 'var(--primary-700)' }}>
+                                        <span><CornerUpLeft size={12} /> Replying to <strong>{replyTo.sender_id === me.id ? 'You' : selectedUser.name}</strong></span>
+                                        <button onClick={() => setReplyTo(null)}><X size={14} /></button>
                                     </div>
                                 )}
                                 <form onSubmit={editingMsg ? handleEdit : handleSend} className="chat-input-bar">
@@ -382,10 +421,44 @@ export default function Chat() {
                 .status-sent { color: rgba(255,255,255,0.5); }
                 .chat-bubble--theirs .status-seen { color: var(--primary-500); }
                 
-                .msg-actions { margin-left: 10px; display: flex; gap: 5px; opacity: 0; transition: 0.2s; }
+                .msg-actions { margin-left: 10px; display: flex; gap: 8px; opacity: 0; transition: 0.2s; }
                 .chat-bubble:hover .msg-actions { opacity: 1; }
-                .msg-actions button { background: none; border: none; color: inherit; cursor: pointer; padding: 2px; border-radius: 4px; }
+                .msg-actions button { background: none; border: none; color: inherit; cursor: pointer; padding: 2px; border-radius: 4px; display: flex; align-items: center; }
                 .msg-actions button:hover { background: rgba(0,0,0,0.1); }
+
+                /* NEW FEATURES STYLES */
+                .is-critical { border: 2px solid var(--red-500) !important; box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+                .pinned-badge, .critical-badge { font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+                .pinned-badge { color: var(--amber-600); }
+                .critical-badge { color: var(--red-600); }
+                
+                .chat-reply-quote { background: rgba(0,0,0,0.05); border-left: 3px solid var(--primary-500); padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; cursor: pointer; font-size: 0.85rem; }
+                .chat-bubble--mine .chat-reply-quote { background: rgba(255,255,255,0.1); border-left-color: #fff; }
+                .quote-sender { font-weight: 700; color: var(--primary-600); font-size: 0.75rem; margin-bottom: 2px; }
+                .chat-bubble--mine .quote-sender { color: #fff; }
+                .quote-text { color: var(--text-muted); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .chat-bubble--mine .quote-text { color: rgba(255,255,255,0.8); }
+
+                .bubble-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+                .reaction-pill { background: var(--bg-hover); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
+                .reaction-pill:hover { transform: scale(1.1); }
+                .reaction-pill.active { background: var(--primary-100); border-color: var(--primary-400); }
+                
+                .hover-reaction-bar { position: absolute; top: -35px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 4px 8px; display: flex; gap: 8px; opacity: 0; pointer-events: none; transition: 0.2s; box-shadow: var(--shadow-lg); z-index: 5; }
+                .chat-bubble:hover .hover-reaction-bar { opacity: 1; pointer-events: auto; top: -40px; }
+                .hover-reaction-bar button { background: none; border: none; font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
+                .hover-reaction-bar button:hover { transform: scale(1.3); }
+
+                @keyframes highlight-flash {
+                    0% { background: var(--amber-100); }
+                    100% { background: transparent; }
+                }
+                .highlight-flash { animation: highlight-flash 2s ease-out; border-radius: 8px; }
+
+                .chat-header-actions { display: flex; gap: 10px; }
+                .btn-icon { background: none; border: none; padding: 8px; border-radius: 8px; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+                .btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+                .btn-icon.active { color: var(--primary-500); background: var(--primary-50); }
 
                 .chat-input-bar-container { background: var(--bg-card); border-top: 1px solid var(--border); }
                 .editing-bar { padding: 5px 20px; background: var(--bg-hover); font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }

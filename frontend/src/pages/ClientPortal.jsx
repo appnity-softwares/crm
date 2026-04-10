@@ -127,13 +127,14 @@ export default function ClientPortal() {
 
     if (loading) return <div className="portal-loading"><div className="spinner" /></div>;
     if (!data) return (
-        <div className="portal-error">
-            <ShieldCheck size={64} className="text-red-500" />
-            <h1>Access Restricted</h1>
-            <p>This secure portal link has been restricted or is invalid. Please contact your project lead for access.</p>
-            <div style={{ display: 'flex', gap: 15, marginTop: 20 }}>
+        <div className="portal-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '100vh', padding: '40px', background: 'var(--bg-app)' }}>
+            <ShieldCheck size={80} style={{ color: '#ef4444', marginBottom: 30 }} />
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: 20 }}>Access Restricted</h1>
+            <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', maxWidth: 600, lineHeight: 1.6, marginBottom: 40 }}>This secure portal link has been restricted or the project is currently unavailable. Please contact your project lead for access.</p>
+            <div style={{ display: 'flex', gap: 20 }}>
                 <button 
                     className="btn btn-indigo" 
+                    style={{ padding: '15px 35px', borderRadius: '15px', fontSize: '1rem' }}
                     disabled={unlockRequested}
                     onClick={async () => {
                         try {
@@ -145,11 +146,11 @@ export default function ClientPortal() {
                 >
                     {unlockRequested ? 'Unlock Requested' : 'Message to Unlock'}
                 </button>
-                <button className="btn btn-secondary" onClick={() => window.location.href = 'mailto:support@appnity.cloud?subject=Portal Access Request'}>
+                <button className="btn btn-secondary" style={{ padding: '15px 35px', borderRadius: '15px', fontSize: '1rem' }} onClick={() => window.location.href = 'mailto:support@appnity.cloud?subject=Portal Access Request'}>
                     Contact Support
                 </button>
             </div>
-            {unlockRequested && <p style={{ fontSize: '0.8rem', color: 'var(--green-500)', marginTop: 15 }}>Your project lead has been notified.</p>}
+            {unlockRequested && <p style={{ fontSize: '0.9rem', color: '#10b981', marginTop: 25, fontWeight: 600 }}>Your project lead has been notified.</p>}
         </div>
     );
 
@@ -511,27 +512,28 @@ export default function ClientPortal() {
                 }
                 .portal-hero {
                     background: linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%);
-                    padding: 80px 0;
+                    padding: 100px 0 160px;
                     color: white;
-                    margin-bottom: -60px;
-                    text-align: left;
+                    margin-bottom: -100px;
+                    text-align: center;
                 }
-                .hero-content { max-width: 850px; }
+                .hero-content { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
                 .brand-badge {
                     display: inline-block;
-                    padding: 6px 14px;
+                    padding: 8px 18px;
                     background: rgba(255,255,255,0.1);
                     border: 1px solid rgba(255,255,255,0.2);
                     border-radius: 30px;
-                    font-size: 0.75rem;
-                    font-weight: 700;
+                    font-size: 0.8rem;
+                    font-weight: 800;
                     text-transform: uppercase;
                     letter-spacing: 1.5px;
                     margin-bottom: 25px;
+                    backdrop-filter: blur(8px);
                 }
-                .hero-content h1 { font-size: 3rem; font-weight: 900; margin-bottom: 15px; letter-spacing: -1px; }
-                .hero-content p { font-size: 1.25rem; opacity: 0.8; margin-bottom: 40px; line-height: 1.5; }
-                .hero-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+                .hero-content h1 { font-size: 3.5rem; font-weight: 900; margin-bottom: 20px; letter-spacing: -2px; line-height: 1.1; }
+                .hero-content p { font-size: 1.25rem; opacity: 0.9; margin-bottom: 40px; line-height: 1.6; max-width: 700px; }
+                .hero-stats { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
                 .stat-pill {
                     display: flex;
                     align-items: center;

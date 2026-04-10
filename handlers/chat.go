@@ -15,9 +15,12 @@ func SendMessage(c *gin.Context) {
 	sid := senderID.(uuid.UUID)
 
 	var req struct {
-		ReceiverID uuid.UUID `json:"receiver_id" binding:"required"`
-		Content    string    `json:"content" binding:"required"`
-		Type       string    `json:"type" binding:"omitempty,oneof=text image link"`
+		ReceiverID uuid.UUID  `json:"receiver_id" binding:"required"`
+		Content    string     `json:"content" binding:"required"`
+		Type       string     `json:"type" binding:"omitempty,oneof=text image link"`
+		ParentID   *uuid.UUID `json:"parent_id"`
+		IsCritical bool       `json:"is_critical"`
+		IsPinned   bool       `json:"is_pinned"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message format", "details": err.Error()})
@@ -35,6 +38,9 @@ func SendMessage(c *gin.Context) {
 		Content:    req.Content,
 		Type:       msgType,
 		Status:     "sent",
+		ParentID:   req.ParentID,
+		IsCritical: req.IsCritical,
+		IsPinned:   req.IsPinned,
 	}
 
 	if err := database.DB.Create(&msg).Error; err != nil {
@@ -73,7 +79,8 @@ func GetChatHistory(c *gin.Context) {
 	}
 
 	var messages []models.Message
-	database.DB.Where("((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_sender) OR ((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_receiver)", mid, otherID, otherID, mid).
+	database.DB.Preload("Reactions").Preload("Parent").
+		Where("((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_sender) OR ((sender_id = ? AND receiver_id = ?) AND NOT hidden_for_receiver)", mid, otherID, otherID, mid).
 		Order("created_at ASC").
 		Find(&messages)
 
@@ -339,4 +346,51 @@ func UpdateChatPermission(c *gin.Context) {
 	database.DB.Save(&permission)
 
 	c.JSON(http.StatusOK, permission)
+}
+func ToggleReaction(c *gin.Context) {
+	myID, _ := c.Get("user_id")
+	mid := myID.(uuid.UUID)
+	msgID := c.Param("id")
+
+	var req struct {
+		Emoji string `json:"emoji" binding:"required,oneof=👍 ❤️ ✅"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid emoji"})
+		return
+	}
+
+	var reaction models.MessageReaction
+	err := database.DB.Where("message_id = ? AND user_id = ? AND emoji = ?", msgID, mid, req.Emoji).First(&reaction).Error
+	if err == nil {
+		// Reaction exists, remove it (toggle off)
+		database.DB.Delete(&reaction)
+		c.JSON(http.StatusOK, gin.H{"message": "Reaction removed"})
+	} else {
+		// Create new reaction
+		newReaction := models.MessageReaction{
+			MessageID: uuid.MustParse(msgID),
+			UserID:    mid,
+			Emoji:     req.Emoji,
+		}
+		if err := database.DB.Create(&newReaction).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reaction"})
+			return
+		}
+		c.JSON(http.StatusCreated, newReaction)
+	}
+}
+
+func TogglePinMessage(c *gin.Context) {
+	msgID := c.Param("id")
+	var msg models.Message
+	if err := database.DB.First(&msg, "id = ?", msgID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
+		return
+	}
+
+	msg.IsPinned = !msg.IsPinned
+	database.DB.Save(&msg)
+
+	c.JSON(http.StatusOK, gin.H{"is_pinned": msg.IsPinned})
 }

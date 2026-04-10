@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projectAPI, taskAPI, employeeAPI, chatPermissionAPI, incomeAPI, configAPI } from '../services/api';
+import { projectAPI, taskAPI, employeeAPI, chatPermissionAPI, incomeAPI, configAPI, clientAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
@@ -24,6 +24,7 @@ export default function ProjectDetail() {
     const [projectIncome, setProjectIncome] = useState([]);
     const [projectUpdates, setProjectUpdates] = useState([]);
     const [projectLogs, setProjectLogs] = useState([]);
+    const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('tasks');
     
@@ -38,7 +39,7 @@ export default function ProjectDetail() {
     const [showAssignModal, setShowAssignModal] = useState(false);
     
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', description: '', total_value: 0, amount_paid: 0, status: '', sow: '', progress: 0 });
+    const [editForm, setEditForm] = useState({ name: '', description: '', total_value: 0, amount_paid: 0, status: '', sow: '', progress: 0, client_id: '' });
 
     const load = async () => {
         try {
@@ -49,7 +50,8 @@ export default function ProjectDetail() {
                 isClient ? chatPermissionAPI.getAll() : Promise.resolve({ data: [] }),
                 isAdmin ? incomeAPI.getAll({ project_id: id }) : Promise.resolve({ data: [] }),
                 projectAPI.getUpdates(id),
-                isAdmin ? configAPI.getAuditLogs({ module: 'project', target_id: id }) : Promise.resolve({ data: [] })
+                isAdmin ? configAPI.getAuditLogs({ module: 'project', target_id: id }) : Promise.resolve({ data: [] }),
+                isAdmin ? clientAPI.getAll() : Promise.resolve({ data: { clients: [] } })
             ]);
             setProject(pRes.data.project || pRes.data);
             setTasks(tRes.data.tasks || []);
@@ -58,6 +60,7 @@ export default function ProjectDetail() {
             setProjectIncome(Array.isArray(iRes.data?.income) ? iRes.data.income : []);
             setProjectUpdates(uRes.data || []);
             setProjectLogs(lRes.data || []);
+            setClients(clRes.data.clients || []);
         } catch (err) { console.error(err); navigate('/projects'); } finally { setLoading(false); }
     };
 
@@ -172,7 +175,12 @@ export default function ProjectDetail() {
                         <div style={{ display: 'flex', gap: 12 }}>
                             {(isAdmin || me?.role === 'manager') && (
                                 <button className="btn btn-secondary" onClick={() => {
-                                    setEditForm({ ...project, start_date: project.start_date?.split('T')[0], end_date: project.end_date?.split('T')[0] });
+                                    setEditForm({ 
+                                        ...project, 
+                                        start_date: project.start_date?.split('T')[0], 
+                                        end_date: project.end_date?.split('T')[0],
+                                        client_id: project.client_id || ''
+                                    });
                                     setShowEditModal(true);
                                 }}>Edit Project</button>
                             )}
@@ -495,6 +503,13 @@ export default function ProjectDetail() {
                                     <option value="completed">Completed</option>
                                     <option value="under_maintenance">Under Maintenance</option>
                                     <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Associated Client</label>
+                                <select value={editForm.client_id} onChange={e => setEditForm({ ...editForm, client_id: e.target.value })}>
+                                    <option value="">No Client (Internal)</option>
+                                    {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.email})</option>)}
                                 </select>
                             </div>
                             <div className="form-group">

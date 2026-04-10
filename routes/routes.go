@@ -229,6 +229,8 @@ func SetupRoutes(r *gin.Engine, authLimiter *middleware.IPRateLimiter) {
 			chat.POST("/permissions/request", handlers.RequestChatPermission)
 			chat.PUT("/permissions/:id", middleware.RoleGuard("admin"), handlers.UpdateChatPermission)
 			chat.PUT("/:id", handlers.EditMessage)
+			chat.PUT("/:id/reaction", handlers.ToggleReaction)
+			chat.PUT("/:id/pin", handlers.TogglePinMessage)
 			chat.DELETE("/:id", handlers.DeleteMessage)
 		}
 
